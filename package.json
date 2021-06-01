@@ -1,0 +1,49 @@
+{
+  "name": "elasticswap",
+  "version": "1.0.0",
+  "description": "The first AMM with native support for tokens with elastic supply",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "console": "npx hardhat console",
+    "coverage": "npx hardhat coverage --temp artifacts",
+    "deploy": "npx hardhat deploy",
+    "lint": "yarn run prettier && yarn run lint:es6 && yarn run lint:solidity && yarn run lint:tests",
+    "lint:es6": "npx eslint ./*.js deploy/*.js deploy/**/*.js",
+    "lint:solidity": "npx solhint contracts/**/*.sol",
+    "lint:tests": "npx eslint test/**/*.js test/*.js",
+    "prettier": "yarn run prettier:es6 && yarn run prettier:solidity && yarn run prettier:tests",
+    "prettier:es6": "prettier --write ./*.js --write deploy/*.js --write deploy/**/*.js",
+    "prettier:solidity": "prettier --write contracts/**/*.sol --write contracts/**/**/*.sol --write contracts/**/**/**/*.sol",
+    "prettier:tests": "yarn compile && prettier --write test/**/*.js test/*.js",
+    "test": "yarn run prettier:tests && yarn run lint:tests && npx hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pelsasser/ElasticSwap.git"
+  },
+  "author": "Phil Elsasser",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/pelsasser/ElasticSwap/issues"
+  },
+  "homepage": "https://github.com/pelsasser/ElasticSwap#readme",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.3.4",
+    "eslint": "^7.27.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-mocha": "8.0.0",
+    "ethereum-waffle": "^3.3.0",
+    "ethers": "^5.3.0",
+    "hardhat": "^2.3.0",
+    "mocha": "^8.4.0",
+    "prettier": "^2.3.0",
+    "prettier-plugin-solidity": "1.0.0-beta.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.1.0"
+  }
+}
