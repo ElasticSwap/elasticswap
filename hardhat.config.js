@@ -21,6 +21,7 @@ module.exports = {
   },
   paths: {
     deploy: ["deploy/core"],
+    sources: "./src",
   },
   namedAccounts: {
     admin: {

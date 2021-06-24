@@ -2,10 +2,10 @@
 pragma solidity ^0.8.4;
 
 import "hardhat/console.sol";
+import "../libraries/MathLib.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Exchange contract for Elastic Swap representing a single ERC20 pair of tokens to be swapped.
@@ -13,7 +13,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @notice This contract provides all of the needed functionality for a liquidity provider to supply/withdraw ERC20
  * tokens and traders to swap tokens for one another.
  */
-contract Exchange is ERC20, Ownable {
+contract Exchange is ERC20 {
+    using MathLib for uint256;
     using SafeERC20 for IERC20;
 
     address public immutable quoteToken; // address of ERC20 quote token (elastic or fixed supply)
@@ -21,9 +22,13 @@ contract Exchange is ERC20, Ownable {
 
     uint16 public elasticDAOFee; // ElasticDAO development fund fee in basis points
     uint16 public constant liquidityFee = 30; // fee provided to liquidity providers in basis points
-    uint16 public constant basisPoints = 10000;
 
-    uint256 public pricingConstantK; // invariant "k" set by initial liquidity provider
+    // x*y=k - we track these internally to compare to actual balances of the ERC20's
+    // in order to calculate the "decay" or the amount of balances that are not
+    // participating in the pricing curve and adding additional liquidity to swap.
+    //uint256 public pricingConstantK;     // invariant "k" set by initial liquidity provider
+    uint256 public internalQuoteTokenReserveQty; // x
+    uint256 public internalBaseTokenReserveQty; // y
 
     modifier notExpired(uint256 _expirationTimeStamp) {
         require(_expirationTimeStamp >= block.timestamp, "Exchange: EXPIRED");
@@ -77,12 +82,14 @@ contract Exchange is ERC20, Ownable {
     {
         if (this.totalSupply() > 0) {
             // we have outstanding liquidity tokens present and an existing price curve
+
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
             uint256 baseTokenReserveQty =
                 IERC20(baseToken).balanceOf(address(this));
+
             uint256 requiredBaseTokenQty =
-                _calculateQty(
+                MathLib.calculateQty(
                     _quoteTokenQtyDesired,
                     quoteTokenReserveQty,
                     baseTokenReserveQty
@@ -99,7 +106,7 @@ contract Exchange is ERC20, Ownable {
             } else {
                 // we need to check the opposite way.
                 uint256 requiredQuoteTokenQty =
-                    _calculateQty(
+                    MathLib.calculateQty(
                         _baseTokenQtyDesired,
                         baseTokenReserveQty,
                         quoteTokenReserveQty
@@ -118,11 +125,13 @@ contract Exchange is ERC20, Ownable {
                 baseTokenReserveQty;
         } else {
             // this user will set the initial pricing curve
-            pricingConstantK = _quoteTokenQtyDesired * _baseTokenQtyDesired; // x*y=k
             quoteTokenQty = _quoteTokenQtyDesired;
             baseTokenQty = _baseTokenQtyDesired;
             liquidityTokenQty = _baseTokenQtyDesired;
         }
+
+        internalQuoteTokenReserveQty += quoteTokenQty;
+        internalBaseTokenReserveQty += baseTokenQty;
 
         IERC20(quoteToken).safeTransferFrom(
             msg.sender,
@@ -134,6 +143,172 @@ contract Exchange is ERC20, Ownable {
             address(this),
             baseTokenQty
         ); // transfer base tokens to Exchange
+        _mint(_liquidityTokenRecipient, liquidityTokenQty); // mint liquidity tokens to recipient
+    }
+
+    /**
+     * @notice Entry point for a liquidity provider to add liquidity (quote tokens) to the exchange
+     * when base token decay is present due to elastic token supply ( a rebase down event).
+     * The caller will receive liquidity tokens in return.
+     * Requires approvals to be granted to this exchange for quote tokens.
+     * @dev variable names with the prefix "w" represent WAD values (decimals with 18 digits of precision)
+     * @param _quoteTokenQtyDesired qty of quoteTokens that you would like to add to the exchange
+     * @param _quoteTokenQtyMin minimum acceptable qty of quoteTokens that will be added (or transaction will revert)
+     * @param _liquidityTokenRecipient address for the exchange to issue the resulting liquidity tokens from
+     * this transaction to
+     * @param _expirationTimestamp timestamp that this transaction must occur before (or transaction will revert)
+     */
+    function addQuoteTokenLiquidity(
+        uint256 _quoteTokenQtyDesired,
+        uint256 _quoteTokenQtyMin,
+        address _liquidityTokenRecipient,
+        uint256 _expirationTimestamp
+    ) external notExpired(_expirationTimestamp) {
+        // to calculate decay in base token, we need to see if we have less
+        // quote token than we expect.  This would mean a rebase down has occurred.
+        uint256 quoteTokenReserveQty =
+            IERC20(quoteToken).balanceOf(address(this));
+        require(
+            internalQuoteTokenReserveQty > quoteTokenReserveQty,
+            "Exchange: NO_BASE_DECAY"
+        );
+
+        // we can now calculate the amount of base token decay
+        uint256 impliedBaseTokenReserveQty =
+            (quoteTokenReserveQty * internalBaseTokenReserveQty) /
+                internalQuoteTokenReserveQty;
+        uint256 baseTokenDecay =
+            internalBaseTokenReserveQty - impliedBaseTokenReserveQty;
+
+        // this may be redundant based on the above math, but will check to ensure the decay wasn't so small
+        // that it was <1 and rounded down to 0 saving the caller some gas
+        require(baseTokenDecay > 0, "Exchange: NO_BASE_DECAY");
+
+        // determine max amount of quote token that can be added to offset the current decay
+        uint256 wInternalBaseToQuoteTokenRatio =
+            internalBaseTokenReserveQty.wDiv(internalQuoteTokenReserveQty);
+
+        // betaDecay / iOmega (B/A)
+        uint256 maxQuoteTokenQty =
+            baseTokenDecay.wDiv(wInternalBaseToQuoteTokenRatio);
+
+        require(
+            _quoteTokenQtyMin < maxQuoteTokenQty,
+            "Exchange: INSUFFICIENT_DECAY"
+        );
+
+        uint256 quoteTokenQty;
+        if (_quoteTokenQtyDesired > maxQuoteTokenQty) {
+            quoteTokenQty = maxQuoteTokenQty;
+        } else {
+            quoteTokenQty = _quoteTokenQtyDesired;
+        }
+        uint256 baseTokenQtyDecayChange =
+            (quoteTokenQty * wInternalBaseToQuoteTokenRatio) / MathLib.WAD;
+
+        // we are not changing anything about our internal accounting here. We are simply adding tokens
+        // to make our internal account "right"...or rather getting the external balances to match our internal
+        // internalBaseTokenReserveQty += baseTokenQtyDecayChange;
+        // internalQuoteTokenReserveQty += quoteTokenQty;
+
+        // calculate the number of liquidity tokens to return to user using:
+        // gamma = deltaX / X / 2 * (deltaY / betaDecay')
+        uint256 wGamma =
+            quoteTokenQty
+                .wDiv(internalQuoteTokenReserveQty)
+                .wMul(baseTokenQtyDecayChange)
+                .wDiv(baseTokenDecay) /
+                MathLib.WAD /
+                2;
+
+        uint256 liquidityTokenQty =
+            (this.totalSupply().wDiv(MathLib.WAD - wGamma) * wGamma) /
+                MathLib.WAD;
+
+        IERC20(quoteToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            quoteTokenQty
+        ); // transfer quote tokens to Exchange
+
+        _mint(_liquidityTokenRecipient, liquidityTokenQty); // mint liquidity tokens to recipient
+    }
+
+    /**
+     * @notice Entry point for a liquidity provider to add liquidity (base tokens) to the exchange
+     * when quote token decay is present due to elastic token supply.
+     * The caller will receive liquidity tokens in return.
+     * Requires approvals to be granted to this exchange for base tokens.
+     * @dev variable names with the prefix "w" represent WAD values (decimals with 18 digits of precision)
+     * @param _baseTokenQtyDesired qty of baseTokens that you would like to add to the exchange
+     * @param _baseTokenQtyMin minimum acceptable qty of baseTokens that will be added (or transaction will revert)
+     * @param _liquidityTokenRecipient address for the exchange to issue the resulting liquidity tokens from
+     * this transaction to
+     * @param _expirationTimestamp timestamp that this transaction must occur before (or transaction will revert)
+     */
+    function addBaseTokenLiquidity(
+        uint256 _baseTokenQtyDesired,
+        uint256 _baseTokenQtyMin,
+        address _liquidityTokenRecipient,
+        uint256 _expirationTimestamp
+    ) external notExpired(_expirationTimestamp) {
+        uint256 quoteTokenReserveQty =
+            IERC20(quoteToken).balanceOf(address(this));
+
+        // calculate decay in opposite token to determine if single asset entry is possible.
+        // TODO: handle situation where rebase down would make this underflow. (better error message?)
+        uint256 quoteTokenDecay =
+            quoteTokenReserveQty - internalQuoteTokenReserveQty;
+        require(quoteTokenDecay > 0, "Exchange: NO_QUOTE_DECAY");
+
+        // determine max amount of base token that can be added to offset the current decay
+        uint256 wInternalQuoteTokenToBaseTokenRatio =
+            internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty);
+
+        // alphaDecay / omega (A/B)
+        uint256 maxBaseTokenQty =
+            quoteTokenDecay.wDiv(wInternalQuoteTokenToBaseTokenRatio);
+
+        require(
+            _baseTokenQtyMin < maxBaseTokenQty,
+            "Exchange: INSUFFICIENT_DECAY"
+        );
+
+        uint256 baseTokenQty;
+        if (_baseTokenQtyDesired > maxBaseTokenQty) {
+            baseTokenQty = maxBaseTokenQty;
+        } else {
+            baseTokenQty = _baseTokenQtyDesired;
+        }
+        uint256 quoteTokenQtyDecayChange =
+            (baseTokenQty * wInternalQuoteTokenToBaseTokenRatio) / MathLib.WAD;
+
+        internalQuoteTokenReserveQty += quoteTokenQtyDecayChange;
+        internalBaseTokenReserveQty += baseTokenQty;
+
+        // calculate the number of liquidity tokens to return to user using:
+        // gamma = deltaY / Y / 2 * (deltaX / alphaDecay')
+        // uint256 gamma =
+        //     ((baseTokenQty / internalBaseTokenReserveQty / 2) *
+        //         quoteTokenQtyDecayChange) / quoteTokenDecay;
+        uint256 wGamma =
+            baseTokenQty
+                .wDiv(internalBaseTokenReserveQty)
+                .wMul(quoteTokenQtyDecayChange)
+                .wDiv(quoteTokenDecay) /
+                MathLib.WAD /
+                2;
+
+        uint256 liquidityTokenQty =
+            (this.totalSupply().wDiv(MathLib.WAD - wGamma) * wGamma) /
+                MathLib.WAD;
+
+        IERC20(baseToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            baseTokenQty
+        ); // transfer base tokens to Exchange
+
         _mint(_liquidityTokenRecipient, liquidityTokenQty); // mint liquidity tokens to recipient
     }
 
@@ -186,8 +361,21 @@ contract Exchange is ERC20, Ownable {
             "Exchange: INSUFFICIENT_BASE_QTY"
         );
 
-        _burn(msg.sender, _liquidityTokenQty);
+        // we need to ensure no overflow here in the case when
+        // we are removing assets when a decay is present.
+        if (quoteTokenQtyToReturn > internalQuoteTokenReserveQty) {
+            internalQuoteTokenReserveQty = 0;
+        } else {
+            internalQuoteTokenReserveQty -= quoteTokenQtyToReturn;
+        }
 
+        if (baseTokenQtyToReturn > internalBaseTokenReserveQty) {
+            internalBaseTokenReserveQty = 0;
+        } else {
+            internalBaseTokenReserveQty -= baseTokenQtyToReturn;
+        }
+
+        _burn(msg.sender, _liquidityTokenQty);
         IERC20(quoteToken).safeTransfer(_tokenRecipient, quoteTokenQtyToReturn);
         IERC20(baseToken).safeTransfer(_tokenRecipient, baseTokenQtyToReturn);
     }
@@ -210,16 +398,11 @@ contract Exchange is ERC20, Ownable {
             "Exchange: INSUFFICIENT_TOKEN_QTY"
         );
 
-        uint256 baseTokenReserveQty =
-            IERC20(baseToken).balanceOf(address(this));
-        // calculate what our quote token reserver "should" be based on K and our base token.
-        uint256 impliedQuoteTokenReserveQty =
-            pricingConstantK / baseTokenReserveQty;
-
-        baseTokenQty = _calculateQtyToReturnAfterFees(
+        baseTokenQty = MathLib.calculateQtyToReturnAfterFees(
             _quoteTokenQty,
-            impliedQuoteTokenReserveQty,
-            baseTokenReserveQty
+            internalQuoteTokenReserveQty,
+            internalBaseTokenReserveQty,
+            liquidityFee
         );
 
         require(
@@ -227,10 +410,9 @@ contract Exchange is ERC20, Ownable {
             "Exchange: INSUFFICIENT_BASE_TOKEN_QTY"
         );
 
-        // we need to reassign K now to take into account growth due to fees
-        pricingConstantK =
-            (impliedQuoteTokenReserveQty + _quoteTokenQty) *
-            (baseTokenReserveQty - baseTokenQty);
+        internalQuoteTokenReserveQty += _quoteTokenQty;
+        internalBaseTokenReserveQty -= baseTokenQty;
+
         IERC20(quoteToken).safeTransferFrom(
             msg.sender,
             address(this),
@@ -261,70 +443,26 @@ contract Exchange is ERC20, Ownable {
             "Exchange: INSUFFICIENT_TOKEN_QTY"
         );
 
-        uint256 baseTokenReserveQty =
-            IERC20(baseToken).balanceOf(address(this));
-
-        // calculate what our quote token reserver "should" be based on K and our base token.
-        uint256 impliedQuoteTokenReserveQty =
-            pricingConstantK / baseTokenReserveQty;
-        quoteTokenQty = _calculateQtyToReturnAfterFees(
+        quoteTokenQty = MathLib.calculateQtyToReturnAfterFees(
             _baseTokenQty,
-            baseTokenReserveQty,
-            impliedQuoteTokenReserveQty
+            internalBaseTokenReserveQty,
+            internalQuoteTokenReserveQty,
+            liquidityFee
         );
 
         require(
             quoteTokenQty > _minQuoteTokenQty,
             "Exchange: INSUFFICIENT_QUOTE_TOKEN_QTY"
         );
-        // we need to reassign K now to take into account growth due to fees
-        pricingConstantK =
-            (impliedQuoteTokenReserveQty - quoteTokenQty) *
-            (baseTokenReserveQty + _baseTokenQty);
+
+        internalQuoteTokenReserveQty -= quoteTokenQty;
+        internalBaseTokenReserveQty += _baseTokenQty;
+
         IERC20(baseToken).safeTransferFrom(
             msg.sender,
             address(this),
             _baseTokenQty
         );
         IERC20(quoteToken).safeTransfer(msg.sender, quoteTokenQty);
-    }
-
-    /**
-     * @dev used to calculate the qty of token a liquidity provider
-     * must add in order to maintain the current reserve ratios
-     * @param _tokenAQty quote or base token qty to be supplied by the liquidity provider
-     * @param _tokenAReserveQty current reserve qty of the quote or base token (same token as tokenA)
-     * @param _tokenBReserveQty current reserve qty of the other quote or base token (not tokenA)
-     */
-    function _calculateQty(
-        uint256 _tokenAQty,
-        uint256 _tokenAReserveQty,
-        uint256 _tokenBReserveQty
-    ) internal pure returns (uint256 tokenBQty) {
-        require(_tokenAQty > 0, "Exchange: INSUFFICIENT_QTY");
-        require(
-            _tokenAReserveQty > 0 && _tokenBReserveQty > 0,
-            "Exchange: INSUFFICIENT_LIQUIDITY"
-        );
-        tokenBQty = (_tokenAQty * _tokenBReserveQty) / _tokenAReserveQty;
-    }
-
-    /**
-     * @dev used to calculate the qty of token a trader will receive (less fees)
-     * given the qty of token A they are providing
-     * @param _tokenASwapQty quote or base token qty to be swapped by the trader
-     * @param _tokenAReserveQty current reserve qty of the quote or base token (same token as tokenA)
-     * @param _tokenBReserveQty current reserve qty of the other quote or base token (not tokenA)
-     */
-    function _calculateQtyToReturnAfterFees(
-        uint256 _tokenASwapQty,
-        uint256 _tokenAReserveQty,
-        uint256 _tokenBReserveQty
-    ) internal pure returns (uint256 price) {
-        uint256 tokenASwapQtyLessFee =
-            _tokenASwapQty * (basisPoints - liquidityFee);
-        price =
-            (tokenASwapQtyLessFee * _tokenBReserveQty) /
-            ((_tokenAReserveQty * basisPoints) + tokenASwapQtyLessFee);
     }
 }

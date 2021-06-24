@@ -3,10 +3,14 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const namedAccounts = await getNamedAccounts();
   const { admin } = namedAccounts;
 
+  const mathLib = await deployments.get("MathLib");
   const deployResult = await deploy("ExchangeFactory", {
     from: admin,
     contract: "ExchangeFactory",
     args: [],
+    libraries: {
+      MathLib: mathLib.address,
+    },
   });
   if (deployResult.newlyDeployed) {
     log(
@@ -15,3 +19,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   }
 };
 module.exports.tags = ["ExchangeFactory"];
+module.exports.dependencies = ["MathLib"];

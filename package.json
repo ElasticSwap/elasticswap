@@ -10,11 +10,11 @@
     "deploy": "npx hardhat deploy",
     "lint": "yarn run prettier && yarn run lint:es6 && yarn run lint:solidity && yarn run lint:tests",
     "lint:es6": "npx eslint ./*.js deploy/**/*.js",
-    "lint:solidity": "npx solhint contracts/*.sol",
+    "lint:solidity": "npx solhint src/**/*.sol",
     "lint:tests": "npx eslint test/**/*.js test/*.js",
     "prettier": "yarn run prettier:es6 && yarn run prettier:solidity && yarn run prettier:tests",
     "prettier:es6": "prettier --write ./*.js --write deploy/**/*.js",
-    "prettier:solidity": "prettier --write contracts/**/*.sol --write contracts/**/**/*.sol --write contracts/*.sol",
+    "prettier:solidity": "prettier --write src/**/*.sol --write src/**/**/*.sol",
     "prettier:tests": "yarn compile && prettier --write test/**/*.js test/*.js",
     "test": "yarn run prettier:tests && yarn run lint:tests && npx hardhat test"
   },
