@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
+require("hardhat-contract-sizer");
 require("hardhat-deploy");
 
 // You need to export an object to set up your config
@@ -39,5 +40,9 @@ module.exports = {
     trader2: {
       default: 4,
     },
+  },
+  contractSizer: {
+    alphaSort: true,
+    runOnCompile: true,
   },
 };

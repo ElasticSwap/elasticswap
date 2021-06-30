@@ -30,9 +30,12 @@ contract Exchange is ERC20 {
     uint256 public internalQuoteTokenReserveQty; // x
     uint256 public internalBaseTokenReserveQty; // y
 
-    modifier notExpired(uint256 _expirationTimeStamp) {
+    /**
+     * @dev Called to check timestamps from users for expiration of their calls.
+     * Used in place of a modifier for byte code savings
+     */
+    function isNotExpired(uint256 _expirationTimeStamp) internal view {
         require(_expirationTimeStamp >= block.timestamp, "Exchange: EXPIRED");
-        _;
     }
 
     /**
@@ -71,28 +74,19 @@ contract Exchange is ERC20 {
         uint256 _baseTokenQtyMin,
         address _liquidityTokenRecipient,
         uint256 _expirationTimestamp
-    )
-        external
-        notExpired(_expirationTimestamp)
-        returns (
-            uint256 quoteTokenQty,
-            uint256 baseTokenQty,
-            uint256 liquidityTokenQty
-        )
-    {
+    ) external {
+        isNotExpired(_expirationTimestamp);
+        uint256 quoteTokenQty;
+        uint256 baseTokenQty;
+        uint256 liquidityTokenQty;
+
         if (this.totalSupply() > 0) {
             // we have outstanding liquidity tokens present and an existing price curve
-
-            uint256 quoteTokenReserveQty =
-                IERC20(quoteToken).balanceOf(address(this));
-            uint256 baseTokenReserveQty =
-                IERC20(baseToken).balanceOf(address(this));
-
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
                     _quoteTokenQtyDesired,
-                    quoteTokenReserveQty,
-                    baseTokenReserveQty
+                    internalQuoteTokenReserveQty,
+                    internalBaseTokenReserveQty
                 );
 
             if (requiredBaseTokenQty <= _baseTokenQtyDesired) {
@@ -108,8 +102,8 @@ contract Exchange is ERC20 {
                 uint256 requiredQuoteTokenQty =
                     MathLib.calculateQty(
                         _baseTokenQtyDesired,
-                        baseTokenReserveQty,
-                        quoteTokenReserveQty
+                        internalBaseTokenReserveQty,
+                        internalQuoteTokenReserveQty
                     );
                 assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
                 require(
@@ -119,10 +113,32 @@ contract Exchange is ERC20 {
                 quoteTokenQty = requiredQuoteTokenQty;
                 baseTokenQty = _baseTokenQtyDesired;
             }
+            uint256 quoteTokenReserveQty =
+                IERC20(quoteToken).balanceOf(address(this));
 
-            liquidityTokenQty =
-                (baseTokenQty * this.totalSupply()) /
-                baseTokenReserveQty;
+            if (quoteTokenReserveQty >= internalQuoteTokenReserveQty) {
+                // alphaDecay is present
+                liquidityTokenQty = MathLib
+                    .calculateLiquidityTokenQtyForDoubleAssetEntry(
+                    this.totalSupply(),
+                    internalQuoteTokenReserveQty,
+                    quoteTokenReserveQty,
+                    baseTokenQty,
+                    internalBaseTokenReserveQty
+                );
+            } else if (quoteTokenReserveQty < internalQuoteTokenReserveQty) {
+                // betaDecay is present
+                uint256 baseTokenReserveQty =
+                    IERC20(baseToken).balanceOf(address(this));
+                liquidityTokenQty = MathLib
+                    .calculateLiquidityTokenQtyForDoubleAssetEntry(
+                    this.totalSupply(),
+                    internalBaseTokenReserveQty,
+                    baseTokenReserveQty,
+                    quoteTokenQty,
+                    internalQuoteTokenReserveQty
+                );
+            }
         } else {
             // this user will set the initial pricing curve
             quoteTokenQty = _quoteTokenQtyDesired;
@@ -163,7 +179,8 @@ contract Exchange is ERC20 {
         uint256 _quoteTokenQtyMin,
         address _liquidityTokenRecipient,
         uint256 _expirationTimestamp
-    ) external notExpired(_expirationTimestamp) {
+    ) external {
+        isNotExpired(_expirationTimestamp);
         // to calculate decay in base token, we need to see if we have less
         // quote token than we expect.  This would mean a rebase down has occurred.
         uint256 quoteTokenReserveQty =
@@ -188,7 +205,7 @@ contract Exchange is ERC20 {
         uint256 wInternalBaseToQuoteTokenRatio =
             internalBaseTokenReserveQty.wDiv(internalQuoteTokenReserveQty);
 
-        // betaDecay / iOmega (B/A)
+        // betaDecay / iSigma (B/A)
         uint256 maxQuoteTokenQty =
             baseTokenDecay.wDiv(wInternalBaseToQuoteTokenRatio);
 
@@ -212,18 +229,14 @@ contract Exchange is ERC20 {
         // internalQuoteTokenReserveQty += quoteTokenQty;
 
         // calculate the number of liquidity tokens to return to user using:
-        // gamma = deltaX / X / 2 * (deltaY / betaDecay')
-        uint256 wGamma =
-            quoteTokenQty
-                .wDiv(internalQuoteTokenReserveQty)
-                .wMul(baseTokenQtyDecayChange)
-                .wDiv(baseTokenDecay) /
-                MathLib.WAD /
-                2;
-
         uint256 liquidityTokenQty =
-            (this.totalSupply().wDiv(MathLib.WAD - wGamma) * wGamma) /
-                MathLib.WAD;
+            MathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+                this.totalSupply(),
+                quoteTokenQty,
+                internalQuoteTokenReserveQty,
+                baseTokenQtyDecayChange,
+                baseTokenDecay
+            );
 
         IERC20(quoteToken).safeTransferFrom(
             msg.sender,
@@ -251,7 +264,8 @@ contract Exchange is ERC20 {
         uint256 _baseTokenQtyMin,
         address _liquidityTokenRecipient,
         uint256 _expirationTimestamp
-    ) external notExpired(_expirationTimestamp) {
+    ) external {
+        isNotExpired(_expirationTimestamp);
         uint256 quoteTokenReserveQty =
             IERC20(quoteToken).balanceOf(address(this));
 
@@ -265,7 +279,7 @@ contract Exchange is ERC20 {
         uint256 wInternalQuoteTokenToBaseTokenRatio =
             internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty);
 
-        // alphaDecay / omega (A/B)
+        // alphaDecay / sigma (A/B)
         uint256 maxBaseTokenQty =
             quoteTokenDecay.wDiv(wInternalQuoteTokenToBaseTokenRatio);
 
@@ -286,22 +300,15 @@ contract Exchange is ERC20 {
         internalQuoteTokenReserveQty += quoteTokenQtyDecayChange;
         internalBaseTokenReserveQty += baseTokenQty;
 
-        // calculate the number of liquidity tokens to return to user using:
-        // gamma = deltaY / Y / 2 * (deltaX / alphaDecay')
-        // uint256 gamma =
-        //     ((baseTokenQty / internalBaseTokenReserveQty / 2) *
-        //         quoteTokenQtyDecayChange) / quoteTokenDecay;
-        uint256 wGamma =
-            baseTokenQty
-                .wDiv(internalBaseTokenReserveQty)
-                .wMul(quoteTokenQtyDecayChange)
-                .wDiv(quoteTokenDecay) /
-                MathLib.WAD /
-                2;
-
+        // calculate the number of liquidity tokens to return to user using
         uint256 liquidityTokenQty =
-            (this.totalSupply().wDiv(MathLib.WAD - wGamma) * wGamma) /
-                MathLib.WAD;
+            MathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+                this.totalSupply(),
+                baseTokenQty,
+                internalBaseTokenReserveQty,
+                quoteTokenQtyDecayChange,
+                quoteTokenDecay
+            );
 
         IERC20(baseToken).safeTransferFrom(
             msg.sender,
@@ -328,11 +335,8 @@ contract Exchange is ERC20 {
         uint256 _baseTokenQtyMin,
         address _tokenRecipient,
         uint256 _expirationTimestamp
-    )
-        external
-        notExpired(_expirationTimestamp)
-        returns (uint256 quoteTokenQtyToReturn, uint256 baseTokenQtyToReturn)
-    {
+    ) external {
+        isNotExpired(_expirationTimestamp);
         require(this.totalSupply() > 0, "Exchange: INSUFFICIENT_LIQUIDITY");
         require(
             _quoteTokenQtyMin > 0 && _baseTokenQtyMin > 0,
@@ -344,12 +348,10 @@ contract Exchange is ERC20 {
         uint256 baseTokenReserveQty =
             IERC20(baseToken).balanceOf(address(this));
 
-        quoteTokenQtyToReturn =
-            (_liquidityTokenQty * quoteTokenReserveQty) /
-            this.totalSupply();
-        baseTokenQtyToReturn =
-            (_liquidityTokenQty * baseTokenReserveQty) /
-            this.totalSupply();
+        uint256 quoteTokenQtyToReturn =
+            (_liquidityTokenQty * quoteTokenReserveQty) / this.totalSupply();
+        uint256 baseTokenQtyToReturn =
+            (_liquidityTokenQty * baseTokenReserveQty) / this.totalSupply();
 
         require(
             quoteTokenQtyToReturn >= _quoteTokenQtyMin,
@@ -392,18 +394,20 @@ contract Exchange is ERC20 {
         uint256 _quoteTokenQty,
         uint256 _minBaseTokenQty,
         uint256 _expirationTimestamp
-    ) external notExpired(_expirationTimestamp) returns (uint256 baseTokenQty) {
+    ) external {
+        isNotExpired(_expirationTimestamp);
         require(
             _quoteTokenQty > 0 && _minBaseTokenQty > 0,
             "Exchange: INSUFFICIENT_TOKEN_QTY"
         );
 
-        baseTokenQty = MathLib.calculateQtyToReturnAfterFees(
-            _quoteTokenQty,
-            internalQuoteTokenReserveQty,
-            internalBaseTokenReserveQty,
-            liquidityFee
-        );
+        uint256 baseTokenQty =
+            MathLib.calculateQtyToReturnAfterFees(
+                _quoteTokenQty,
+                internalQuoteTokenReserveQty,
+                internalBaseTokenReserveQty,
+                liquidityFee
+            );
 
         require(
             baseTokenQty > _minBaseTokenQty,
@@ -433,22 +437,20 @@ contract Exchange is ERC20 {
         uint256 _baseTokenQty,
         uint256 _minQuoteTokenQty,
         uint256 _expirationTimestamp
-    )
-        external
-        notExpired(_expirationTimestamp)
-        returns (uint256 quoteTokenQty)
-    {
+    ) external {
+        isNotExpired(_expirationTimestamp);
         require(
             _baseTokenQty > 0 && _minQuoteTokenQty > 0,
             "Exchange: INSUFFICIENT_TOKEN_QTY"
         );
 
-        quoteTokenQty = MathLib.calculateQtyToReturnAfterFees(
-            _baseTokenQty,
-            internalBaseTokenReserveQty,
-            internalQuoteTokenReserveQty,
-            liquidityFee
-        );
+        uint256 quoteTokenQty =
+            MathLib.calculateQtyToReturnAfterFees(
+                _baseTokenQty,
+                internalBaseTokenReserveQty,
+                internalQuoteTokenReserveQty,
+                liquidityFee
+            );
 
         require(
             quoteTokenQty > _minQuoteTokenQty,

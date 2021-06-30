@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.4;
 
+import "hardhat/console.sol";
+
 /**
  * @title MathLib
  * @author ElasticDAO
@@ -72,5 +74,51 @@ library MathLib {
         qtyToReturn =
             (tokenASwapQtyLessFee * _tokenBReserveQty) /
             ((_tokenAReserveQty * BASIS_POINTS) + tokenASwapQtyLessFee);
+    }
+
+    // gamma = deltaY / Y / 2 * (deltaX / alphaDecay')
+    function calculateLiquidityTokenQtyForSingleAssetEntry(
+        uint256 _totalSupplyOfLiquidityTokens,
+        uint256 _tokenQtyAToAdd,
+        uint256 _internalTokenAReserveQty,
+        uint256 _tokenBDecayChange,
+        uint256 _tokenBDecay
+    ) public pure returns (uint256 liquidityTokenQty) {
+        uint256 wGamma =
+            wDiv(
+                wMul(
+                    wDiv(_tokenQtyAToAdd, _internalTokenAReserveQty),
+                    _tokenBDecayChange
+                ),
+                _tokenBDecay
+            ) /
+                WAD /
+                2;
+        liquidityTokenQty =
+            (wDiv(_totalSupplyOfLiquidityTokens, WAD - wGamma) * wGamma) /
+            WAD;
+    }
+
+    
+    function calculateLiquidityTokenQtyForDoubleAssetEntry(
+        uint256 _totalSupplyOfLiquidityTokens,
+        uint256 _tokenAInternalBalance,
+        uint256 _tokenAExternalBalance,
+        uint256 _tokenBQty,
+        uint256 _tokenBInternalBalance
+    ) public pure returns (uint256 liquidityTokenQty) {
+        // deltaRo = Ro * (1 - aDecay / A / 2) / (1 - deltaY / Y’) * (deltaY / Y’)
+        uint256 tokenADecay = _tokenAExternalBalance - _tokenAInternalBalance;
+        uint256 tokenBInternalBalanceAfterTx =
+            _tokenBInternalBalance + _tokenBQty;
+
+        liquidityTokenQty =
+            (wDiv(
+                _totalSupplyOfLiquidityTokens *
+                    (WAD - wDiv(tokenADecay, _tokenAExternalBalance) / 2),
+                WAD - wDiv(_tokenBQty, tokenBInternalBalanceAfterTx)
+            ) * wDiv(_tokenBQty, tokenBInternalBalanceAfterTx)) /
+            WAD /
+            WAD;
     }
 }

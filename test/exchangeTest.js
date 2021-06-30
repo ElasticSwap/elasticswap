@@ -645,7 +645,8 @@ describe("Exchange", () => {
     const quoteTokenReserveQty = await quoteToken.balanceOf(exchange.address);
     const baseTokenReserveQty = await baseToken.balanceOf(exchange.address);
     const ratio =
-      quoteTokenReserveQty.toNumber() / baseTokenReserveQty.toNumber();
+      (await exchange.internalQuoteTokenReserveQty()).toNumber() /
+      (await exchange.internalBaseTokenReserveQty()).toNumber();
 
     const quoteTokenQtyToAdd = Math.round(amountToAdd * ratio);
 

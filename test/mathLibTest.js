@@ -102,4 +102,25 @@ describe("MathLib", () => {
       )
     ).to.equal(tokenBQtyExpected);
   });
+
+  describe("calculateLiquidityTokenQtyForDoubleAssetEntry", () => {
+    it("Should return the correct qty of liquidity tokens", async () => {
+      //X11/(1-T6/S6)*(T6/S6)
+      // 50 X (1-40/50/2) / (1-25/75) * (25/75)
+      const totalSupplyOfLiquidityTokens = 50;
+      const tokenAInternalBalance = 10;
+      const tokenAExternalBalance = 50;
+      const tokenBQtyToAdd = 25;
+      const tokenBInternalBalance = 50;
+      expect(
+        await mathLib.calculateLiquidityTokenQtyForDoubleAssetEntry(
+          totalSupplyOfLiquidityTokens,
+          tokenAInternalBalance,
+          tokenAExternalBalance,
+          tokenBQtyToAdd,
+          tokenBInternalBalance
+        )
+      ).to.equal(14); // due to rounding.... 14.999999
+    });
+  });
 });
