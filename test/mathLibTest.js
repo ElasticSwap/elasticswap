@@ -105,8 +105,13 @@ describe("MathLib", () => {
 
   describe("calculateLiquidityTokenQtyForDoubleAssetEntry", () => {
     it("Should return the correct qty of liquidity tokens", async () => {
-      //X11/(1-T6/S6)*(T6/S6)
-      // 50 X (1-40/50/2) / (1-25/75) * (25/75)
+      
+      // deltaRo = Ro * (1 - aDecay / A / 2) / (1 - deltaY / Y’) * (deltaY / Y’)
+      // 50 * (1 - 40/50/2) / (1-25/75) * 25/75
+      // 50 * (1-.4) / (1-.33333) * 25/75
+      // 50 * .6 / .666667 * 25 / 75
+      // 14.99999999... 
+
       const totalSupplyOfLiquidityTokens = 50;
       const tokenAInternalBalance = 10;
       const tokenAExternalBalance = 50;
@@ -120,7 +125,7 @@ describe("MathLib", () => {
           tokenBQtyToAdd,
           tokenBInternalBalance
         )
-      ).to.equal(14); // due to rounding.... 14.999999
+      ).to.equal(14); // due to floor based rounding.... 14.999999
     });
   });
 });
