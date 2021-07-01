@@ -104,7 +104,8 @@ library MathLib {
         uint256 _baseTokenQty,
         uint256 _baseTokenReserveBalance
     ) public pure returns (uint256 liquidityTokenQty) {
-        liquidityTokenQty = _baseTokenQty * _totalSupplyOfLiquidityTokens / _baseTokenReserveBalance;
+        liquidityTokenQty =
+            (_baseTokenQty * _totalSupplyOfLiquidityTokens) /
+            _baseTokenReserveBalance;
     }
-
 }

@@ -82,6 +82,10 @@ contract Exchange is ERC20 {
 
         if (this.totalSupply() > 0) {
             // we have outstanding liquidity tokens present and an existing price curve
+
+            // confirm that we have no beta or alpha decay present
+            // if we do, in the future we will resolve that first
+            // but for our proof of concept, we are disallowing this
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
                     _quoteTokenQtyDesired,
@@ -116,29 +120,36 @@ contract Exchange is ERC20 {
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
 
-            if (quoteTokenReserveQty >= internalQuoteTokenReserveQty) {
-                // alphaDecay is present
-                liquidityTokenQty = MathLib
-                    .calculateLiquidityTokenQtyForDoubleAssetEntry(
-                    this.totalSupply(),
-                    internalQuoteTokenReserveQty,
-                    quoteTokenReserveQty,
-                    baseTokenQty,
-                    internalBaseTokenReserveQty
-                );
-            } else if (quoteTokenReserveQty < internalQuoteTokenReserveQty) {
-                // betaDecay is present
-                uint256 baseTokenReserveQty =
-                    IERC20(baseToken).balanceOf(address(this));
-                liquidityTokenQty = MathLib
-                    .calculateLiquidityTokenQtyForDoubleAssetEntry(
-                    this.totalSupply(),
-                    internalBaseTokenReserveQty,
-                    baseTokenReserveQty,
-                    quoteTokenQty,
-                    internalQuoteTokenReserveQty
-                );
-            }
+            liquidityTokenQty = MathLib
+                .calculateLiquidityTokenQtyForDoubleAssetEntry(
+                this.totalSupply(),
+                baseTokenQty,
+                IERC20(baseToken).balanceOf(address(this))
+            );
+
+            // if (quoteTokenReserveQty >= internalQuoteTokenReserveQty) {
+            //     // alphaDecay is present
+            //     liquidityTokenQty = MathLib
+            //         .calculateLiquidityTokenQtyForDoubleAssetEntry(
+            //         this.totalSupply(),
+            //         internalQuoteTokenReserveQty,
+            //         quoteTokenReserveQty,
+            //         baseTokenQty,
+            //         internalBaseTokenReserveQty
+            //     );
+            // } else if (quoteTokenReserveQty < internalQuoteTokenReserveQty) {
+            //     // betaDecay is present
+            //     uint256 baseTokenReserveQty =
+            //         IERC20(baseToken).balanceOf(address(this));
+            //     liquidityTokenQty = MathLib
+            //         .calculateLiquidityTokenQtyForDoubleAssetEntry(
+            //         this.totalSupply(),
+            //         internalBaseTokenReserveQty,
+            //         baseTokenReserveQty,
+            //         quoteTokenQty,
+            //         internalQuoteTokenReserveQty
+            //     );
+            // }
         } else {
             // this user will set the initial pricing curve
             quoteTokenQty = _quoteTokenQtyDesired;
