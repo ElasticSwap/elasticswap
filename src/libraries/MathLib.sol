@@ -99,26 +99,12 @@ library MathLib {
             WAD;
     }
 
-    
     function calculateLiquidityTokenQtyForDoubleAssetEntry(
         uint256 _totalSupplyOfLiquidityTokens,
-        uint256 _tokenAInternalBalance,
-        uint256 _tokenAExternalBalance,
-        uint256 _tokenBQty,
-        uint256 _tokenBInternalBalance
+        uint256 _baseTokenQty,
+        uint256 _baseTokenReserveBalance
     ) public pure returns (uint256 liquidityTokenQty) {
-        // deltaRo = Ro * (1 - aDecay / A / 2) / (1 - deltaY / Y’) * (deltaY / Y’)
-        uint256 tokenADecay = _tokenAExternalBalance - _tokenAInternalBalance;
-        uint256 tokenBInternalBalanceAfterTx =
-            _tokenBInternalBalance + _tokenBQty;
-
-        liquidityTokenQty =
-            (wDiv(
-                _totalSupplyOfLiquidityTokens *
-                    (WAD - wDiv(tokenADecay, _tokenAExternalBalance) / 2),
-                WAD - wDiv(_tokenBQty, tokenBInternalBalanceAfterTx)
-            ) * wDiv(_tokenBQty, tokenBInternalBalanceAfterTx)) /
-            WAD /
-            WAD;
+        liquidityTokenQty = _baseTokenQty * _totalSupplyOfLiquidityTokens / _baseTokenReserveBalance;
     }
+
 }
