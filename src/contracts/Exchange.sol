@@ -86,6 +86,10 @@ contract Exchange is ERC20 {
             // confirm that we have no beta or alpha decay present
             // if we do, in the future we will resolve that first
             // but for our proof of concept, we are disallowing this
+            uint256 quoteTokenReserveQty =
+                IERC20(quoteToken).balanceOf(address(this));
+            require(quoteTokenReserveQty == internalQuoteTokenReserveQty, "Exchange: ASSET_DECAY_PRESENT"); // TODO fix this!
+
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
                     _quoteTokenQtyDesired,
@@ -117,8 +121,6 @@ contract Exchange is ERC20 {
                 quoteTokenQty = requiredQuoteTokenQty;
                 baseTokenQty = _baseTokenQtyDesired;
             }
-            uint256 quoteTokenReserveQty =
-                IERC20(quoteToken).balanceOf(address(this));
 
             liquidityTokenQty = MathLib
                 .calculateLiquidityTokenQtyForDoubleAssetEntry(
@@ -320,7 +322,7 @@ contract Exchange is ERC20 {
                 quoteTokenQtyDecayChange,
                 quoteTokenDecay
             );
-
+        
         IERC20(baseToken).safeTransferFrom(
             msg.sender,
             address(this),
