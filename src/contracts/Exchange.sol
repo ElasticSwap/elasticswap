@@ -88,10 +88,12 @@ contract Exchange is ERC20 {
             // but for our proof of concept, we are disallowing this
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
-            require(
-                quoteTokenReserveQty == internalQuoteTokenReserveQty,
-                "Exchange: ASSET_DECAY_PRESENT"
-            ); // TODO fix this!
+
+            if (quoteTokenReserveQty > internalQuoteTokenReserveQty) {
+                // we have more quote token than expected, rebase up has occurred
+            } else {
+                //
+            }
 
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
@@ -282,14 +284,38 @@ contract Exchange is ERC20 {
         uint256 _expirationTimestamp
     ) external {
         isNotExpired(_expirationTimestamp);
+
         uint256 quoteTokenReserveQty =
             IERC20(quoteToken).balanceOf(address(this));
 
-        // calculate decay in opposite token to determine if single asset entry is possible.
-        // TODO: handle situation where rebase down would make this underflow. (better error message?)
+        require(
+            quoteTokenReserveQty > internalQuoteTokenReserveQty,
+            "Exchange: NO_QUOTE_DECAY"
+        );
+
+        (uint256 baseTokenQty, uint256 liquidityTokenQty) =
+            _addBaseTokenLiquidity(
+                _baseTokenQtyDesired,
+                _baseTokenQtyMin,
+                quoteTokenReserveQty
+            );
+
+        IERC20(baseToken).safeTransferFrom(
+            msg.sender,
+            address(this),
+            baseTokenQty
+        ); // transfer base tokens to Exchange
+
+        _mint(_liquidityTokenRecipient, liquidityTokenQty); // mint liquidity tokens to recipient
+    }
+
+    function _addBaseTokenLiquidity(
+        uint256 _baseTokenQtyDesired,
+        uint256 _baseTokenQtyMin,
+        uint256 _quoteTokenReserveQty
+    ) internal returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
         uint256 quoteTokenDecay =
-            quoteTokenReserveQty - internalQuoteTokenReserveQty;
-        require(quoteTokenDecay > 0, "Exchange: NO_QUOTE_DECAY");
+            _quoteTokenReserveQty - internalQuoteTokenReserveQty;
 
         // determine max amount of base token that can be added to offset the current decay
         uint256 wInternalQuoteTokenToBaseTokenRatio =
@@ -304,7 +330,6 @@ contract Exchange is ERC20 {
             "Exchange: INSUFFICIENT_DECAY"
         );
 
-        uint256 baseTokenQty;
         if (_baseTokenQtyDesired > maxBaseTokenQty) {
             baseTokenQty = maxBaseTokenQty;
         } else {
@@ -317,22 +342,15 @@ contract Exchange is ERC20 {
         internalBaseTokenReserveQty += baseTokenQty;
 
         // calculate the number of liquidity tokens to return to user using
-        uint256 liquidityTokenQty =
-            MathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
-                this.totalSupply(),
-                baseTokenQty,
-                internalBaseTokenReserveQty,
-                quoteTokenQtyDecayChange,
-                quoteTokenDecay
-            );
-
-        IERC20(baseToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            baseTokenQty
-        ); // transfer base tokens to Exchange
-
-        _mint(_liquidityTokenRecipient, liquidityTokenQty); // mint liquidity tokens to recipient
+        liquidityTokenQty = MathLib
+            .calculateLiquidityTokenQtyForSingleAssetEntry(
+            this.totalSupply(),
+            baseTokenQty,
+            internalBaseTokenReserveQty,
+            quoteTokenQtyDecayChange,
+            quoteTokenDecay
+        );
+        return (baseTokenQty, liquidityTokenQty);
     }
 
     /**
@@ -464,26 +482,27 @@ contract Exchange is ERC20 {
         // check to see if we have experience base token decay / a rebase down event
         uint256 quoteTokenReserveQty =
             IERC20(quoteToken).balanceOf(address(this));
-        
-        if(quoteTokenReserveQty < internalQuoteTokenReserveQty) 
-        { // we have less reserves than our current price curve will expect, we need to adjust the curve
-            uint256 wPricingRatio = internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty); // omega
-            uint256 impliedBaseTokenQty = quoteTokenReserveQty.wDiv(wPricingRatio) / MathLib.WAD;
-            quoteTokenQty =
-                MathLib.calculateQtyToReturnAfterFees(
-                    _baseTokenQty,
-                    impliedBaseTokenQty,
-                    quoteTokenReserveQty,
-                    liquidityFee
-                );
-        } else { // we have the same or more reserves, no need to alter the curve.
-            quoteTokenQty =
-                MathLib.calculateQtyToReturnAfterFees(
-                    _baseTokenQty,
-                    internalBaseTokenReserveQty,
-                    internalQuoteTokenReserveQty,
-                    liquidityFee
-                );
+
+        if (quoteTokenReserveQty < internalQuoteTokenReserveQty) {
+            // we have less reserves than our current price curve will expect, we need to adjust the curve
+            uint256 wPricingRatio =
+                internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty); // omega
+            uint256 impliedBaseTokenQty =
+                quoteTokenReserveQty.wDiv(wPricingRatio) / MathLib.WAD;
+            quoteTokenQty = MathLib.calculateQtyToReturnAfterFees(
+                _baseTokenQty,
+                impliedBaseTokenQty,
+                quoteTokenReserveQty,
+                liquidityFee
+            );
+        } else {
+            // we have the same or more reserves, no need to alter the curve.
+            quoteTokenQty = MathLib.calculateQtyToReturnAfterFees(
+                _baseTokenQty,
+                internalBaseTokenReserveQty,
+                internalQuoteTokenReserveQty,
+                liquidityFee
+            );
         }
 
         require(
