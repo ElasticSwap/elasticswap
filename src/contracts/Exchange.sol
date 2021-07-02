@@ -21,7 +21,6 @@ contract Exchange is ERC20 {
         // x*y=k - we track these internally to compare to actual balances of the ERC20's
         // in order to calculate the "decay" or the amount of balances that are not
         // participating in the pricing curve and adding additional liquidity to swap.
-        //uint256 public pricingConstantK;     // invariant "k" set by initial liquidity provider
         uint256 quoteTokenReserveQty; // x
         uint256 baseTokenReserveQty; // y
     }
