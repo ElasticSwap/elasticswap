@@ -2,6 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "hardhat/console.sol";
+import "../contracts/Exchange.sol";
 
 /**
  * @title MathLib
@@ -109,49 +110,51 @@ library MathLib {
             _baseTokenReserveBalance;
     }
 
-    // function calculateAddBaseTokenLiquidityQtys(
-    //     uint256 _baseTokenQtyDesired,
-    //     uint256 _baseTokenQtyMin,
-    //     uint256 _internalBaseTokenReserveQty,
-    //     uint256 _quoteTokenReserveQty,
-    //     uint256 _internalQuoteTokenReserveQty
-    // ) public pure returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
-    //     uint256 quoteTokenDecay =
-    //         _quoteTokenReserveQty - _internalQuoteTokenReserveQty;
+    function calculateAddBaseTokenLiquidityQuantities(
+        uint256 _totalSupplyOfLiquidityTokens,
+        uint256 _baseTokenQtyDesired,
+        uint256 _baseTokenQtyMin,
+        uint256 _quoteTokenReserveQty,
+        Exchange.InternalBalances storage _internalBalances
+    ) public returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
+        uint256 quoteTokenDecay =
+            _quoteTokenReserveQty - _internalBalances.quoteTokenReserveQty;
 
-    //     // determine max amount of base token that can be added to offset the current decay
-    //     uint256 wInternalQuoteTokenToBaseTokenRatio =
-    //         _internalQuoteTokenReserveQty.wDiv(_internalBaseTokenReserveQty);
+        // determine max amount of base token that can be added to offset the current decay
+        uint256 wInternalQuoteTokenToBaseTokenRatio =
+            wDiv(
+                _internalBalances.quoteTokenReserveQty,
+                _internalBalances.baseTokenReserveQty
+            );
 
-    //     // alphaDecay / sigma (A/B)
-    //     uint256 maxBaseTokenQty =
-    //         quoteTokenDecay.wDiv(wInternalQuoteTokenToBaseTokenRatio);
+        // alphaDecay / sigma (A/B)
+        uint256 maxBaseTokenQty =
+            wDiv(quoteTokenDecay, wInternalQuoteTokenToBaseTokenRatio);
 
-    //     require(
-    //         _baseTokenQtyMin < maxBaseTokenQty,
-    //         "Exchange: INSUFFICIENT_DECAY"
-    //     );
+        require(
+            _baseTokenQtyMin < maxBaseTokenQty,
+            "Exchange: INSUFFICIENT_DECAY"
+        );
 
-    //     if (_baseTokenQtyDesired > maxBaseTokenQty) {
-    //         baseTokenQty = maxBaseTokenQty;
-    //     } else {
-    //         baseTokenQty = _baseTokenQtyDesired;
-    //     }
-    //     uint256 quoteTokenQtyDecayChange =
-    //         (baseTokenQty * wInternalQuoteTokenToBaseTokenRatio) / MathLib.WAD;
+        if (_baseTokenQtyDesired > maxBaseTokenQty) {
+            baseTokenQty = maxBaseTokenQty;
+        } else {
+            baseTokenQty = _baseTokenQtyDesired;
+        }
+        uint256 quoteTokenQtyDecayChange =
+            (baseTokenQty * wInternalQuoteTokenToBaseTokenRatio) / MathLib.WAD;
 
-    //     internalQuoteTokenReserveQty += quoteTokenQtyDecayChange;
-    //     internalBaseTokenReserveQty += baseTokenQty;
+        _internalBalances.quoteTokenReserveQty += quoteTokenQtyDecayChange;
+        _internalBalances.baseTokenReserveQty += baseTokenQty;
 
-    //     // calculate the number of liquidity tokens to return to user using
-    //     liquidityTokenQty = MathLib
-    //         .calculateLiquidityTokenQtyForSingleAssetEntry(
-    //         this.totalSupply(),
-    //         baseTokenQty,
-    //         internalBaseTokenReserveQty,
-    //         quoteTokenQtyDecayChange,
-    //         quoteTokenDecay
-    //     );
-    //     return (baseTokenQty, liquidityTokenQty);
-    // }
+        // calculate the number of liquidity tokens to return to user using
+        liquidityTokenQty = calculateLiquidityTokenQtyForSingleAssetEntry(
+            _totalSupplyOfLiquidityTokens,
+            baseTokenQty,
+            _internalBalances.baseTokenReserveQty,
+            quoteTokenQtyDecayChange,
+            quoteTokenDecay
+        );
+        return (baseTokenQty, liquidityTokenQty);
+    }
 }
