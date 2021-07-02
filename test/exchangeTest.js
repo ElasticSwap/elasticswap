@@ -7,6 +7,7 @@ describe("Exchange", () => {
   let quoteToken;
   let accounts;
   let liquidityFee;
+  let liquidityFeeInBasisPoints;
   let initialSupply;
   let mathLib;
 
@@ -30,7 +31,8 @@ describe("Exchange", () => {
     const Exchange = await deployments.get("EGT Exchange");
     exchange = new ethers.Contract(Exchange.address, Exchange.abi, accounts[0]);
 
-    liquidityFee = (await exchange.liquidityFee()) / 10000;
+    liquidityFeeInBasisPoints = await exchange.liquidityFee();
+    liquidityFee = liquidityFeeInBasisPoints / 10000;
     initialSupply = await baseToken.totalSupply();
 
     const MathLib = await deployments.get("MathLib");
@@ -1262,34 +1264,38 @@ describe("Exchange", () => {
     const trader = accounts[2];
 
     // send users (liquidity provider) quote and base tokens for easy accounting.
-    const liquidityProviderInitialBalances = 1000000;
+    const liquidityProviderInitialQuoteBalances = 1000000;
+    const liquidityProviderInitialBaseBalances = 500;
     await quoteToken.transfer(
       liquidityProvider.address,
-      liquidityProviderInitialBalances
+      liquidityProviderInitialQuoteBalances
     );
     await baseToken.transfer(
       liquidityProvider.address,
-      liquidityProviderInitialBalances
+      liquidityProviderInitialBaseBalances
     );
 
     // the trader needs base tokens to trade for quote tokens, in an attempt to drain all quote tokens
     // since we have excess base tokens in the system due to the rebase down that will occur.
-    await baseToken.transfer(trader.address, liquidityProviderInitialBalances);
+    await baseToken.transfer(
+      trader.address,
+      liquidityProviderInitialBaseBalances
+    );
 
     // add approvals
-    await baseToken
-      .connect(liquidityProvider)
-      .approve(exchange.address, liquidityProviderInitialBalances);
     await quoteToken
       .connect(liquidityProvider)
-      .approve(exchange.address, liquidityProviderInitialBalances);
+      .approve(exchange.address, liquidityProviderInitialQuoteBalances);
+    await baseToken
+      .connect(liquidityProvider)
+      .approve(exchange.address, liquidityProviderInitialBaseBalances);
     await baseToken
       .connect(trader)
-      .approve(exchange.address, liquidityProviderInitialBalances);
+      .approve(exchange.address, liquidityProviderInitialBaseBalances);
 
     await exchange.connect(liquidityProvider).addLiquidity(
-      liquidityProviderInitialBalances, // quote token
-      liquidityProviderInitialBalances, // base token
+      liquidityProviderInitialQuoteBalances, // quote token
+      liquidityProviderInitialBaseBalances, // base token
       1,
       1,
       liquidityProvider.address,
@@ -1297,7 +1303,8 @@ describe("Exchange", () => {
     );
 
     // simulate a rebase down by sending tokens from our exchange contract away.  90% rebase down.
-    const quoteTokenRebaseDownAmount = liquidityProviderInitialBalances * 0.9;
+    const quoteTokenRebaseDownAmount =
+      liquidityProviderInitialQuoteBalances * 0.9;
     await quoteToken.simulateRebaseDown(
       exchange.address,
       quoteTokenRebaseDownAmount
@@ -1305,12 +1312,12 @@ describe("Exchange", () => {
 
     // confirm the exchange now has the expected balance after rebase
     const quoteTokenExternalReserveQty =
-      liquidityProviderInitialBalances - quoteTokenRebaseDownAmount;
+      liquidityProviderInitialQuoteBalances - quoteTokenRebaseDownAmount;
     expect(await quoteToken.balanceOf(exchange.address)).to.equal(
       quoteTokenExternalReserveQty
     );
     expect(await baseToken.balanceOf(exchange.address)).to.equal(
-      liquidityProviderInitialBalances
+      liquidityProviderInitialBaseBalances
     );
 
     // execute a trade that could drain all remaining quote reserves;
@@ -1318,15 +1325,20 @@ describe("Exchange", () => {
       (await exchange.internalQuoteTokenReserveQty()).toNumber() /
       (await exchange.internalBaseTokenReserveQty()).toNumber(); // omega
     const baseTokenSwapQty = Math.floor(
-      liquidityProviderInitialBalances / internalPriceRatio
+      liquidityProviderInitialQuoteBalances / internalPriceRatio
     );
+
+    const internalQuoteTokenReserve =
+      await exchange.internalQuoteTokenReserveQty();
+    const internalBaseTokenReserve =
+      await exchange.internalBaseTokenReserveQty();
 
     // confirm that this qty would in fact remove all quote tokens from the exchange.
     const quoteTokenQtyToReturn = await mathLib.calculateQtyToReturnAfterFees(
       baseTokenSwapQty,
-      await exchange.internalQuoteTokenReserveQty(),
-      await exchange.internalBaseTokenReserveQty(),
-      await exchange.liquidityFee()
+      internalBaseTokenReserve,
+      internalQuoteTokenReserve,
+      liquidityFeeInBasisPoints
     );
 
     // the qty this would return based on the the internal reserves (x and y) is more than the total balance in the exchange.

@@ -467,13 +467,13 @@ contract Exchange is ERC20 {
         
         if(quoteTokenReserveQty < internalQuoteTokenReserveQty) 
         { // we have less reserves than our current price curve will expect, we need to adjust the curve
-            uint256 pricingRatio = internalQuoteTokenReserveQty / internalBaseTokenReserveQty; // omega
-            uint impliedBaseTokenQty = quoteTokenReserveQty / pricingRatio;
+            uint256 wPricingRatio = internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty); // omega
+            uint256 impliedBaseTokenQty = quoteTokenReserveQty.wDiv(wPricingRatio) / MathLib.WAD;
             quoteTokenQty =
                 MathLib.calculateQtyToReturnAfterFees(
                     _baseTokenQty,
-                    quoteTokenReserveQty,
                     impliedBaseTokenQty,
+                    quoteTokenReserveQty,
                     liquidityFee
                 );
         } else { // we have the same or more reserves, no need to alter the curve.
