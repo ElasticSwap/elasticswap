@@ -17,18 +17,22 @@ contract Exchange is ERC20 {
     using MathLib for uint256;
     using SafeERC20 for IERC20;
 
+    struct InternalBalances {
+        // x*y=k - we track these internally to compare to actual balances of the ERC20's
+        // in order to calculate the "decay" or the amount of balances that are not
+        // participating in the pricing curve and adding additional liquidity to swap.
+        //uint256 public pricingConstantK;     // invariant "k" set by initial liquidity provider
+        uint256 internalQuoteTokenReserveQty; // x
+        uint256 internalBaseTokenReserveQty; // y
+    }
+
     address public immutable quoteToken; // address of ERC20 quote token (elastic or fixed supply)
     address public immutable baseToken; // address of ERC20 base token (WETH or a stable coin w/ fixed supply)
 
     uint16 public elasticDAOFee; // ElasticDAO development fund fee in basis points
     uint16 public constant liquidityFee = 30; // fee provided to liquidity providers in basis points
 
-    // x*y=k - we track these internally to compare to actual balances of the ERC20's
-    // in order to calculate the "decay" or the amount of balances that are not
-    // participating in the pricing curve and adding additional liquidity to swap.
-    //uint256 public pricingConstantK;     // invariant "k" set by initial liquidity provider
-    uint256 public internalQuoteTokenReserveQty; // x
-    uint256 public internalBaseTokenReserveQty; // y
+    InternalBalances public internalBalances = InternalBalances(0,0);
 
     /**
      * @dev Called to check timestamps from users for expiration of their calls.
@@ -89,7 +93,7 @@ contract Exchange is ERC20 {
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
 
-            if (quoteTokenReserveQty > internalQuoteTokenReserveQty) {
+            if (quoteTokenReserveQty > internalBalances.internalQuoteTokenReserveQty) {
                 // we have more quote token than expected, rebase up has occurred
             } else {
                 //
@@ -98,8 +102,8 @@ contract Exchange is ERC20 {
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
                     _quoteTokenQtyDesired,
-                    internalQuoteTokenReserveQty,
-                    internalBaseTokenReserveQty
+                    internalBalances.internalQuoteTokenReserveQty,
+                    internalBalances.internalBaseTokenReserveQty
                 );
 
             if (requiredBaseTokenQty <= _baseTokenQtyDesired) {
@@ -115,8 +119,8 @@ contract Exchange is ERC20 {
                 uint256 requiredQuoteTokenQty =
                     MathLib.calculateQty(
                         _baseTokenQtyDesired,
-                        internalBaseTokenReserveQty,
-                        internalQuoteTokenReserveQty
+                        internalBalances.internalBaseTokenReserveQty,
+                        internalBalances.internalQuoteTokenReserveQty
                     );
                 assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
                 require(
@@ -164,8 +168,8 @@ contract Exchange is ERC20 {
             liquidityTokenQty = _baseTokenQtyDesired;
         }
 
-        internalQuoteTokenReserveQty += quoteTokenQty;
-        internalBaseTokenReserveQty += baseTokenQty;
+        internalBalances.internalQuoteTokenReserveQty += quoteTokenQty;
+        internalBalances.internalBaseTokenReserveQty += baseTokenQty;
 
         IERC20(quoteToken).safeTransferFrom(
             msg.sender,
@@ -204,16 +208,16 @@ contract Exchange is ERC20 {
         uint256 quoteTokenReserveQty =
             IERC20(quoteToken).balanceOf(address(this));
         require(
-            internalQuoteTokenReserveQty > quoteTokenReserveQty,
+            internalBalances.internalQuoteTokenReserveQty > quoteTokenReserveQty,
             "Exchange: NO_BASE_DECAY"
         );
 
         // we can now calculate the amount of base token decay
         uint256 impliedBaseTokenReserveQty =
-            (quoteTokenReserveQty * internalBaseTokenReserveQty) /
-                internalQuoteTokenReserveQty;
+            (quoteTokenReserveQty * internalBalances.internalBaseTokenReserveQty) /
+                internalBalances.internalQuoteTokenReserveQty;
         uint256 baseTokenDecay =
-            internalBaseTokenReserveQty - impliedBaseTokenReserveQty;
+            internalBalances.internalBaseTokenReserveQty - impliedBaseTokenReserveQty;
 
         // this may be redundant based on the above math, but will check to ensure the decay wasn't so small
         // that it was <1 and rounded down to 0 saving the caller some gas
@@ -221,7 +225,7 @@ contract Exchange is ERC20 {
 
         // determine max amount of quote token that can be added to offset the current decay
         uint256 wInternalBaseToQuoteTokenRatio =
-            internalBaseTokenReserveQty.wDiv(internalQuoteTokenReserveQty);
+            internalBalances.internalBaseTokenReserveQty.wDiv(internalBalances.internalQuoteTokenReserveQty);
 
         // betaDecay / iSigma (B/A)
         uint256 maxQuoteTokenQty =
@@ -251,7 +255,7 @@ contract Exchange is ERC20 {
             MathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
                 this.totalSupply(),
                 quoteTokenQty,
-                internalQuoteTokenReserveQty,
+                internalBalances.internalQuoteTokenReserveQty,
                 baseTokenQtyDecayChange,
                 baseTokenDecay
             );
@@ -289,7 +293,7 @@ contract Exchange is ERC20 {
             IERC20(quoteToken).balanceOf(address(this));
 
         require(
-            quoteTokenReserveQty > internalQuoteTokenReserveQty,
+            quoteTokenReserveQty > internalBalances.internalQuoteTokenReserveQty,
             "Exchange: NO_QUOTE_DECAY"
         );
 
@@ -315,11 +319,11 @@ contract Exchange is ERC20 {
         uint256 _quoteTokenReserveQty
     ) internal returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
         uint256 quoteTokenDecay =
-            _quoteTokenReserveQty - internalQuoteTokenReserveQty;
+            _quoteTokenReserveQty - internalBalances.internalQuoteTokenReserveQty;
 
         // determine max amount of base token that can be added to offset the current decay
         uint256 wInternalQuoteTokenToBaseTokenRatio =
-            internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty);
+            internalBalances.internalQuoteTokenReserveQty.wDiv(internalBalances.internalBaseTokenReserveQty);
 
         // alphaDecay / sigma (A/B)
         uint256 maxBaseTokenQty =
@@ -338,15 +342,15 @@ contract Exchange is ERC20 {
         uint256 quoteTokenQtyDecayChange =
             (baseTokenQty * wInternalQuoteTokenToBaseTokenRatio) / MathLib.WAD;
 
-        internalQuoteTokenReserveQty += quoteTokenQtyDecayChange;
-        internalBaseTokenReserveQty += baseTokenQty;
+        internalBalances.internalQuoteTokenReserveQty += quoteTokenQtyDecayChange;
+        internalBalances.internalBaseTokenReserveQty += baseTokenQty;
 
         // calculate the number of liquidity tokens to return to user using
         liquidityTokenQty = MathLib
             .calculateLiquidityTokenQtyForSingleAssetEntry(
             this.totalSupply(),
             baseTokenQty,
-            internalBaseTokenReserveQty,
+            internalBalances.internalBaseTokenReserveQty,
             quoteTokenQtyDecayChange,
             quoteTokenDecay
         );
@@ -399,16 +403,16 @@ contract Exchange is ERC20 {
 
         // we need to ensure no overflow here in the case when
         // we are removing assets when a decay is present.
-        if (quoteTokenQtyToReturn > internalQuoteTokenReserveQty) {
-            internalQuoteTokenReserveQty = 0;
+        if (quoteTokenQtyToReturn > internalBalances.internalQuoteTokenReserveQty) {
+            internalBalances.internalQuoteTokenReserveQty = 0;
         } else {
-            internalQuoteTokenReserveQty -= quoteTokenQtyToReturn;
+            internalBalances.internalQuoteTokenReserveQty -= quoteTokenQtyToReturn;
         }
 
-        if (baseTokenQtyToReturn > internalBaseTokenReserveQty) {
-            internalBaseTokenReserveQty = 0;
+        if (baseTokenQtyToReturn > internalBalances.internalBaseTokenReserveQty) {
+            internalBalances.internalBaseTokenReserveQty = 0;
         } else {
-            internalBaseTokenReserveQty -= baseTokenQtyToReturn;
+            internalBalances.internalBaseTokenReserveQty -= baseTokenQtyToReturn;
         }
 
         _burn(msg.sender, _liquidityTokenQty);
@@ -438,8 +442,8 @@ contract Exchange is ERC20 {
         uint256 baseTokenQty =
             MathLib.calculateQtyToReturnAfterFees(
                 _quoteTokenQty,
-                internalQuoteTokenReserveQty,
-                internalBaseTokenReserveQty,
+                internalBalances.internalQuoteTokenReserveQty,
+                internalBalances.internalBaseTokenReserveQty,
                 liquidityFee
             );
 
@@ -448,8 +452,8 @@ contract Exchange is ERC20 {
             "Exchange: INSUFFICIENT_BASE_TOKEN_QTY"
         );
 
-        internalQuoteTokenReserveQty += _quoteTokenQty;
-        internalBaseTokenReserveQty -= baseTokenQty;
+        internalBalances.internalQuoteTokenReserveQty += _quoteTokenQty;
+        internalBalances.internalBaseTokenReserveQty -= baseTokenQty;
 
         IERC20(quoteToken).safeTransferFrom(
             msg.sender,
@@ -483,10 +487,10 @@ contract Exchange is ERC20 {
         uint256 quoteTokenReserveQty =
             IERC20(quoteToken).balanceOf(address(this));
 
-        if (quoteTokenReserveQty < internalQuoteTokenReserveQty) {
+        if (quoteTokenReserveQty < internalBalances.internalQuoteTokenReserveQty) {
             // we have less reserves than our current price curve will expect, we need to adjust the curve
             uint256 wPricingRatio =
-                internalQuoteTokenReserveQty.wDiv(internalBaseTokenReserveQty); // omega
+                internalBalances.internalQuoteTokenReserveQty.wDiv(internalBalances.internalBaseTokenReserveQty); // omega
             uint256 impliedBaseTokenQty =
                 quoteTokenReserveQty.wDiv(wPricingRatio) / MathLib.WAD;
             quoteTokenQty = MathLib.calculateQtyToReturnAfterFees(
@@ -499,8 +503,8 @@ contract Exchange is ERC20 {
             // we have the same or more reserves, no need to alter the curve.
             quoteTokenQty = MathLib.calculateQtyToReturnAfterFees(
                 _baseTokenQty,
-                internalBaseTokenReserveQty,
-                internalQuoteTokenReserveQty,
+                internalBalances.internalBaseTokenReserveQty,
+                internalBalances.internalQuoteTokenReserveQty,
                 liquidityFee
             );
         }
@@ -510,8 +514,8 @@ contract Exchange is ERC20 {
             "Exchange: INSUFFICIENT_QUOTE_TOKEN_QTY"
         );
 
-        internalQuoteTokenReserveQty -= quoteTokenQty;
-        internalBaseTokenReserveQty += _baseTokenQty;
+        internalBalances.internalQuoteTokenReserveQty -= quoteTokenQty;
+        internalBalances.internalBaseTokenReserveQty += _baseTokenQty;
 
         IERC20(baseToken).safeTransferFrom(
             msg.sender,

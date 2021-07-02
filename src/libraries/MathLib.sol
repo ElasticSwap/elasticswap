@@ -108,4 +108,50 @@ library MathLib {
             (_baseTokenQty * _totalSupplyOfLiquidityTokens) /
             _baseTokenReserveBalance;
     }
+
+    // function calculateAddBaseTokenLiquidityQtys(
+    //     uint256 _baseTokenQtyDesired,
+    //     uint256 _baseTokenQtyMin,
+    //     uint256 _internalBaseTokenReserveQty,
+    //     uint256 _quoteTokenReserveQty,
+    //     uint256 _internalQuoteTokenReserveQty
+    // ) public pure returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
+    //     uint256 quoteTokenDecay =
+    //         _quoteTokenReserveQty - _internalQuoteTokenReserveQty;
+
+    //     // determine max amount of base token that can be added to offset the current decay
+    //     uint256 wInternalQuoteTokenToBaseTokenRatio =
+    //         _internalQuoteTokenReserveQty.wDiv(_internalBaseTokenReserveQty);
+
+    //     // alphaDecay / sigma (A/B)
+    //     uint256 maxBaseTokenQty =
+    //         quoteTokenDecay.wDiv(wInternalQuoteTokenToBaseTokenRatio);
+
+    //     require(
+    //         _baseTokenQtyMin < maxBaseTokenQty,
+    //         "Exchange: INSUFFICIENT_DECAY"
+    //     );
+
+    //     if (_baseTokenQtyDesired > maxBaseTokenQty) {
+    //         baseTokenQty = maxBaseTokenQty;
+    //     } else {
+    //         baseTokenQty = _baseTokenQtyDesired;
+    //     }
+    //     uint256 quoteTokenQtyDecayChange =
+    //         (baseTokenQty * wInternalQuoteTokenToBaseTokenRatio) / MathLib.WAD;
+
+    //     internalQuoteTokenReserveQty += quoteTokenQtyDecayChange;
+    //     internalBaseTokenReserveQty += baseTokenQty;
+
+    //     // calculate the number of liquidity tokens to return to user using
+    //     liquidityTokenQty = MathLib
+    //         .calculateLiquidityTokenQtyForSingleAssetEntry(
+    //         this.totalSupply(),
+    //         baseTokenQty,
+    //         internalBaseTokenReserveQty,
+    //         quoteTokenQtyDecayChange,
+    //         quoteTokenDecay
+    //     );
+    //     return (baseTokenQty, liquidityTokenQty);
+    // }
 }
