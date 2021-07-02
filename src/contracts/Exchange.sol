@@ -88,16 +88,40 @@ contract Exchange is ERC20 {
             // we have outstanding liquidity tokens present and an existing price curve
 
             // confirm that we have no beta or alpha decay present
-            // if we do, in the future we will resolve that first
-            // but for our proof of concept, we are disallowing this
+            // if we do, we need to resolve that first            
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
 
+            // TODO: can we end up in an off by one situation where the below always ends up getting called
+            // and wasting gas for what is a trivial amount of decay that cannot be resolved?  IE we are always off by 1...
             if (quoteTokenReserveQty > internalBalances.quoteTokenReserveQty) {
-                // we have more quote token than expected, rebase up has occurred
-            } else {
-                //
+                // we have more quote token than expected (quote token decay) due to rebase up
+                // we first need to handle this situation by requiring this user
+                // to add base tokens
+                (baseTokenQty, liquidityTokenQty) = MathLib.calculateAddBaseTokenLiquidityQuantities(
+                    _baseTokenQtyDesired,
+                    0,  // there is no minimum for this particular call since we may use base tokens later.
+                    quoteTokenReserveQty,
+                    this.totalSupply(),
+                    internalBalances
+                );
+            } else if (quoteTokenReserveQty < internalBalances.quoteTokenReserveQty) {
+                // we have less quote token than expected (base token decay) due to a rebase down 
+                // we first need to handle this by adding quote tokens to offset this.
+                (quoteTokenQty, liquidityTokenQty) = MathLib.calculateAddQuoteTokenLiquidityQuantities(
+                    _quoteTokenQtyDesired,
+                    0,  // there is no minimum for this particular call since we may use quote tokens later.
+                    quoteTokenReserveQty,
+                    this.totalSupply(),
+                    internalBalances
+                );
             }
+
+            //NOTE: we need to take into account the amounts that are going to be consumed in the above if /else if statements
+            // IE if we are using 500 baseTokens from the user, we need to remove those from the below calcs
+
+            // NOTE: we also need to check if after the above calls, they have anything left to double asset entry with?
+            // if they don't we can bypass some of the next logic.
 
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
@@ -137,30 +161,6 @@ contract Exchange is ERC20 {
                 baseTokenQty,
                 IERC20(baseToken).balanceOf(address(this))
             );
-
-            // if (quoteTokenReserveQty >= quoteTokenReserveQty) {
-            //     // alphaDecay is present
-            //     liquidityTokenQty = MathLib
-            //         .calculateLiquidityTokenQtyForDoubleAssetEntry(
-            //         this.totalSupply(),
-            //         quoteTokenReserveQty,
-            //         quoteTokenReserveQty,
-            //         baseTokenQty,
-            //         baseTokenReserveQty
-            //     );
-            // } else if (quoteTokenReserveQty < quoteTokenReserveQty) {
-            //     // betaDecay is present
-            //     uint256 baseTokenReserveQty =
-            //         IERC20(baseToken).balanceOf(address(this));
-            //     liquidityTokenQty = MathLib
-            //         .calculateLiquidityTokenQtyForDoubleAssetEntry(
-            //         this.totalSupply(),
-            //         baseTokenReserveQty,
-            //         baseTokenReserveQty,
-            //         quoteTokenQty,
-            //         quoteTokenReserveQty
-            //     );
-            // }
         } else {
             // this user will set the initial pricing curve
             quoteTokenQty = _quoteTokenQtyDesired;
@@ -215,10 +215,10 @@ contract Exchange is ERC20 {
 
         (uint256 quoteTokenQty, uint256 liquidityTokenQty) =
             MathLib.calculateAddQuoteTokenLiquidityQuantities(
-                this.totalSupply(),
-                quoteTokenReserveQty,
                 _quoteTokenQtyDesired,
                 _quoteTokenQtyMin,
+                quoteTokenReserveQty,
+                this.totalSupply(),
                 internalBalances
             );
 
@@ -261,10 +261,10 @@ contract Exchange is ERC20 {
 
         (uint256 baseTokenQty, uint256 liquidityTokenQty) =
             MathLib.calculateAddBaseTokenLiquidityQuantities(
-                this.totalSupply(),
                 _baseTokenQtyDesired,
                 _baseTokenQtyMin,
                 quoteTokenReserveQty,
+                this.totalSupply(),
                 internalBalances
             );
 

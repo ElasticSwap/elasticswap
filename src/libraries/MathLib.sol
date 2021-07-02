@@ -111,10 +111,10 @@ library MathLib {
     }
 
     function calculateAddBaseTokenLiquidityQuantities(
-        uint256 _totalSupplyOfLiquidityTokens,
         uint256 _baseTokenQtyDesired,
         uint256 _baseTokenQtyMin,
         uint256 _quoteTokenReserveQty,
+        uint256 _totalSupplyOfLiquidityTokens,
         Exchange.InternalBalances storage _internalBalances
     ) public returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
         uint256 quoteTokenDecay =
@@ -159,10 +159,10 @@ library MathLib {
     }
 
     function calculateAddQuoteTokenLiquidityQuantities(
-        uint256 _totalSupplyOfLiquidityTokens,
-        uint256 _quoteTokenReserveQty,
         uint256 _quoteTokenQtyDesired,
         uint256 _quoteTokenQtyMin,
+        uint256 _quoteTokenReserveQty,
+        uint256 _totalSupplyOfLiquidityTokens,
         Exchange.InternalBalances memory _internalBalances
     ) public pure returns (uint256 quoteTokenQty, uint256 liquidityTokenQty) {
         // we can now calculate the amount of base token decay
