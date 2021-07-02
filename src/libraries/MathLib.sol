@@ -144,6 +144,8 @@ library MathLib {
         uint256 quoteTokenQtyDecayChange =
             (baseTokenQty * wInternalQuoteTokenToBaseTokenRatio) / MathLib.WAD;
 
+        //x += alphaDecayChange
+        //y += deltaBeta
         _internalBalances.quoteTokenReserveQty += quoteTokenQtyDecayChange;
         _internalBalances.baseTokenReserveQty += baseTokenQty;
 
