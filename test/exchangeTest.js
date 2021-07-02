@@ -491,7 +491,7 @@ describe("Exchange", () => {
       .connect(trader)
       .swapBaseTokenForQuoteToken(swapAmount2, 1, expiration);
 
-    // our second liquidity provider has to deal with the current decay prior to adding additional liquidity. 
+    // our second liquidity provider has to deal with the current decay prior to adding additional liquidity.
     // we currently have quote token decay (quote tokens that are not contributing to liquidity) to remedy this,
     // lp2 needs to add base tokens.
     const quoteTokenDecay =
@@ -499,17 +499,21 @@ describe("Exchange", () => {
       (await exchange.internalQuoteTokenReserveQty());
 
     // omega
-    const internalQuoteTokenToBaseTokenQty = (await exchange.internalQuoteTokenReserveQty()).toNumber() / (await exchange.internalBaseTokenReserveQty()).toNumber();
+    const internalQuoteTokenToBaseTokenQty =
+      (await exchange.internalQuoteTokenReserveQty()).toNumber() /
+      (await exchange.internalBaseTokenReserveQty()).toNumber();
 
     // alphaDecay / omega
-    const baseTokenQtyNeededToRemoveDecay = Math.floor(quoteTokenDecay / internalQuoteTokenToBaseTokenQty);
-    
+    const baseTokenQtyNeededToRemoveDecay = Math.floor(
+      quoteTokenDecay / internalQuoteTokenToBaseTokenQty
+    );
+
     // have second liquidity provider add liquidity
     await exchange
       .connect(liquidityProvider2)
       .addBaseTokenLiquidity(
         baseTokenQtyNeededToRemoveDecay,
-        baseTokenQtyNeededToRemoveDecay -1,
+        baseTokenQtyNeededToRemoveDecay - 1,
         liquidityProvider2.address,
         expiration
       );
@@ -538,13 +542,22 @@ describe("Exchange", () => {
     // check that LP#1 has no more LP token
     expect(await exchange.balanceOf(liquidityProvider1.address)).to.equal(0);
 
-    const remainingQuoteTokens = (await quoteToken.balanceOf(exchange.address)).toNumber();
-    const remainingBaseTokens = (await baseToken.balanceOf(exchange.address)).toNumber();
-    
-    const lp2ContributionValueInBaseTokenUnits = (remainingQuoteTokens / internalQuoteTokenToBaseTokenQty) + remainingBaseTokens;
+    const remainingQuoteTokens = (
+      await quoteToken.balanceOf(exchange.address)
+    ).toNumber();
+    const remainingBaseTokens = (
+      await baseToken.balanceOf(exchange.address)
+    ).toNumber();
+
+    const lp2ContributionValueInBaseTokenUnits =
+      remainingQuoteTokens / internalQuoteTokenToBaseTokenQty +
+      remainingBaseTokens;
 
     // we expect that Lp2 has the same "value" of tokens and doesn't get any fees that he wasn't a part of the pool during the trades occurring
-    expect(lp2ContributionValueInBaseTokenUnits).to.be.approximately(baseTokenQtyNeededToRemoveDecay, 10);
+    expect(lp2ContributionValueInBaseTokenUnits).to.be.approximately(
+      baseTokenQtyNeededToRemoveDecay,
+      10
+    );
 
     // LP #2 should now be able to remove all his tokens
     // in equal amounts to what he put in (no fees to him or trades occurred).
@@ -561,12 +574,16 @@ describe("Exchange", () => {
     // check that no more LP tokens are outstanding
     expect(await exchange.totalSupply()).to.equal(0);
 
-    // check that exchange has no reserves left. 
+    // check that exchange has no reserves left.
     expect(await quoteToken.balanceOf(exchange.address)).to.equal(0);
     expect(await baseToken.balanceOf(exchange.address)).to.equal(0);
   });
 
   it("Should not return fees to liquidity provider who didn't experience any trades", async () => {
+    // Note: this is different from the "Should return fees to correct liquidity provider" test due to the order of the withdrawal of LP tokens
+    // by the liquidity provider.  Basically, we want to ensure that order doesn't matter.  LP1 can withdraw before or after LP2 and the accounting still
+    // is correct.
+
     const amountToAdd = 1000000;
     // create expiration 50 minutes from now.
     const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
@@ -632,60 +649,76 @@ describe("Exchange", () => {
       .connect(trader)
       .swapBaseTokenForQuoteToken(swapAmount2, 1, expiration);
 
-    // calculate current ratio for providing liquidity
-    const quoteTokenReserveQty = await quoteToken.balanceOf(exchange.address);
-    const baseTokenReserveQty = await baseToken.balanceOf(exchange.address);
-    const ratio =
+    // our second liquidity provider has to deal with the current decay prior to adding additional liquidity.
+    // we currently have quote token decay (quote tokens that are not contributing to liquidity) to remedy this,
+    // lp2 needs to add base tokens.
+    const quoteTokenDecay =
+      (await quoteToken.balanceOf(exchange.address)) -
+      (await exchange.internalQuoteTokenReserveQty());
+
+    // omega
+    const internalQuoteTokenToBaseTokenQty =
       (await exchange.internalQuoteTokenReserveQty()).toNumber() /
       (await exchange.internalBaseTokenReserveQty()).toNumber();
 
-    const quoteTokenQtyToAdd = Math.round(amountToAdd * ratio);
-
-    // we also should calculate the expected liquidityTokens LP#2 should receive for this liquidity.
-    const expectedLiquidityTokenQty =
-      (amountToAdd * (await exchange.totalSupply())) / baseTokenReserveQty;
+    // alphaDecay / omega
+    const baseTokenQtyNeededToRemoveDecay = Math.floor(
+      quoteTokenDecay / internalQuoteTokenToBaseTokenQty
+    );
 
     // have second liquidity provider add liquidity
     await exchange
       .connect(liquidityProvider2)
-      .addLiquidity(
-        quoteTokenQtyToAdd,
-        amountToAdd,
-        quoteTokenQtyToAdd - 1,
-        1,
+      .addBaseTokenLiquidity(
+        baseTokenQtyNeededToRemoveDecay,
+        baseTokenQtyNeededToRemoveDecay - 1,
         liquidityProvider2.address,
         expiration
       );
 
-    expect(await exchange.balanceOf(liquidityProvider2.address)).to.equal(
-      Math.floor(expectedLiquidityTokenQty)
-    );
+    const quoteTokenDecayAfterLP2 =
+      (await quoteToken.balanceOf(exchange.address)) -
+      (await exchange.internalQuoteTokenReserveQty());
+    expect(quoteTokenDecayAfterLP2).to.be.lessThanOrEqual(1);
 
-    const quoteTokenAddedAmountFromliquidityProvider2 =
-      (await quoteToken.balanceOf(exchange.address)) - quoteTokenReserveQty;
-    const baseTokenAddedAmountFromliquidityProvider2 =
-      (await baseToken.balanceOf(exchange.address)) - baseTokenReserveQty;
+    // to simplify the accounting we will send all quote and base tokens from the withdrawal to a "clean" address
+    const cleanAddress = accounts[4].address;
 
-    // have second LP remove liquidity, they should get back the same mount, no fees back to them.
+    // confirm this address has no balances.
+    expect(await quoteToken.balanceOf(cleanAddress)).to.equal(0);
+    expect(await baseToken.balanceOf(cleanAddress)).to.equal(0);
+
+    // withdraw all liquidity from the second provider,
+    // and check that they have accrued no value / fees
     await exchange
       .connect(liquidityProvider2)
       .removeLiquidity(
         await exchange.balanceOf(liquidityProvider2.address),
-        quoteTokenAddedAmountFromliquidityProvider2 - 1,
-        baseTokenAddedAmountFromliquidityProvider2,
-        liquidityProvider2.address,
+        1,
+        1,
+        cleanAddress,
         expiration
       );
 
-    // confirm LP #2 has no more LP tokens
+    // check that LP#2 has no more LP token
     expect(await exchange.balanceOf(liquidityProvider2.address)).to.equal(0);
 
-    // confirm LP #2 has the balances they started with (and nothing more)
-    expect(await quoteToken.balanceOf(liquidityProvider2.address)).to.equal(
-      amountToAdd - 1
-    );
-    expect(await baseToken.balanceOf(liquidityProvider2.address)).to.equal(
-      amountToAdd
+    const quoteTokensWithdrawn = (
+      await quoteToken.balanceOf(cleanAddress)
+    ).toNumber();
+    const baseTokensWithdrawn = (
+      await baseToken.balanceOf(cleanAddress)
+    ).toNumber();
+
+    const lp2ContributionValueInBaseTokenUnits =
+      quoteTokensWithdrawn / internalQuoteTokenToBaseTokenQty +
+      baseTokensWithdrawn;
+
+    // we expect that Lp2 has the same "value" of tokens and doesn't get any fees that he wasn't a part of the pool during the trades occurring
+    // this is "approximately" due to integer rounding in several locations.
+    expect(lp2ContributionValueInBaseTokenUnits).to.be.approximately(
+      baseTokenQtyNeededToRemoveDecay,
+      10
     );
   });
 

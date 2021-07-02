@@ -88,7 +88,10 @@ contract Exchange is ERC20 {
             // but for our proof of concept, we are disallowing this
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
-            require(quoteTokenReserveQty == internalQuoteTokenReserveQty, "Exchange: ASSET_DECAY_PRESENT"); // TODO fix this!
+            require(
+                quoteTokenReserveQty == internalQuoteTokenReserveQty,
+                "Exchange: ASSET_DECAY_PRESENT"
+            ); // TODO fix this!
 
             uint256 requiredBaseTokenQty =
                 MathLib.calculateQty(
@@ -322,7 +325,7 @@ contract Exchange is ERC20 {
                 quoteTokenQtyDecayChange,
                 quoteTokenDecay
             );
-        
+
         IERC20(baseToken).safeTransferFrom(
             msg.sender,
             address(this),

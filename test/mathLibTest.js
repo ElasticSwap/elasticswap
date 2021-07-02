@@ -115,7 +115,7 @@ describe("MathLib", () => {
           baseTokenQtyToAdd,
           baseTokenBalance
         )
-      ).to.equal(15); 
+      ).to.equal(15);
     });
   });
 });
