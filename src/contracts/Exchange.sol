@@ -207,59 +207,19 @@ contract Exchange is ERC20 {
         // quote token than we expect.  This would mean a rebase down has occurred.
         uint256 quoteTokenReserveQty =
             IERC20(quoteToken).balanceOf(address(this));
+
         require(
             internalBalances.quoteTokenReserveQty > quoteTokenReserveQty,
             "Exchange: NO_BASE_DECAY"
         );
 
-        // we can now calculate the amount of base token decay
-        uint256 impliedBaseTokenReserveQty =
-            (quoteTokenReserveQty * internalBalances.baseTokenReserveQty) /
-                internalBalances.quoteTokenReserveQty;
-        uint256 baseTokenDecay =
-            internalBalances.baseTokenReserveQty - impliedBaseTokenReserveQty;
-
-        // this may be redundant based on the above math, but will check to ensure the decay wasn't so small
-        // that it was <1 and rounded down to 0 saving the caller some gas
-        require(baseTokenDecay > 0, "Exchange: NO_BASE_DECAY");
-
-        // determine max amount of quote token that can be added to offset the current decay
-        uint256 wInternalBaseToQuoteTokenRatio =
-            internalBalances.baseTokenReserveQty.wDiv(
-                internalBalances.quoteTokenReserveQty
-            );
-
-        // betaDecay / iSigma (B/A)
-        uint256 maxQuoteTokenQty =
-            baseTokenDecay.wDiv(wInternalBaseToQuoteTokenRatio);
-
-        require(
-            _quoteTokenQtyMin < maxQuoteTokenQty,
-            "Exchange: INSUFFICIENT_DECAY"
-        );
-
-        uint256 quoteTokenQty;
-        if (_quoteTokenQtyDesired > maxQuoteTokenQty) {
-            quoteTokenQty = maxQuoteTokenQty;
-        } else {
-            quoteTokenQty = _quoteTokenQtyDesired;
-        }
-        uint256 baseTokenQtyDecayChange =
-            (quoteTokenQty * wInternalBaseToQuoteTokenRatio) / MathLib.WAD;
-
-        // we are not changing anything about our internal accounting here. We are simply adding tokens
-        // to make our internal account "right"...or rather getting the external balances to match our internal
-        // baseTokenReserveQty += baseTokenQtyDecayChange;
-        // quoteTokenReserveQty += quoteTokenQty;
-
-        // calculate the number of liquidity tokens to return to user using:
-        uint256 liquidityTokenQty =
-            MathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+        (uint256 quoteTokenQty, uint256 liquidityTokenQty) =
+            MathLib.calculateAddQuoteTokenLiquidityQuantities(
                 this.totalSupply(),
-                quoteTokenQty,
-                internalBalances.quoteTokenReserveQty,
-                baseTokenQtyDecayChange,
-                baseTokenDecay
+                quoteTokenReserveQty,
+                _quoteTokenQtyDesired,
+                _quoteTokenQtyMin,
+                internalBalances
             );
 
         IERC20(quoteToken).safeTransferFrom(

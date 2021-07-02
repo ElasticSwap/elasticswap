@@ -157,4 +157,63 @@ library MathLib {
         );
         return (baseTokenQty, liquidityTokenQty);
     }
+
+    function calculateAddQuoteTokenLiquidityQuantities(
+        uint256 _totalSupplyOfLiquidityTokens,
+        uint256 _quoteTokenReserveQty,
+        uint256 _quoteTokenQtyDesired,
+        uint256 _quoteTokenQtyMin,
+        Exchange.InternalBalances memory _internalBalances
+    ) public pure returns (uint256 quoteTokenQty, uint256 liquidityTokenQty) {
+        // we can now calculate the amount of base token decay
+        uint256 impliedBaseTokenReserveQty =
+            (_quoteTokenReserveQty * _internalBalances.baseTokenReserveQty) /
+                _internalBalances.quoteTokenReserveQty;
+        uint256 baseTokenDecay =
+            _internalBalances.baseTokenReserveQty - impliedBaseTokenReserveQty;
+
+        // this may be redundant based on the above math, but will check to ensure the decay wasn't so small
+        // that it was <1 and rounded down to 0 saving the caller some gas
+        require(baseTokenDecay > 0, "Exchange: NO_BASE_DECAY");
+
+        // determine max amount of quote token that can be added to offset the current decay
+        uint256 wInternalBaseToQuoteTokenRatio =
+            wDiv(
+                _internalBalances.baseTokenReserveQty,
+                _internalBalances.quoteTokenReserveQty
+            );
+
+        // betaDecay / iSigma (B/A)
+        uint256 maxQuoteTokenQty =
+            wDiv(baseTokenDecay, wInternalBaseToQuoteTokenRatio);
+
+        require(
+            _quoteTokenQtyMin < maxQuoteTokenQty,
+            "Exchange: INSUFFICIENT_DECAY"
+        );
+
+        if (_quoteTokenQtyDesired > maxQuoteTokenQty) {
+            quoteTokenQty = maxQuoteTokenQty;
+        } else {
+            quoteTokenQty = _quoteTokenQtyDesired;
+        }
+        uint256 baseTokenQtyDecayChange =
+            (quoteTokenQty * wInternalBaseToQuoteTokenRatio) / MathLib.WAD;
+
+        // we are not changing anything about our internal accounting here. We are simply adding tokens
+        // to make our internal account "right"...or rather getting the external balances to match our internal
+        // baseTokenReserveQty += baseTokenQtyDecayChange;
+        // quoteTokenReserveQty += quoteTokenQty;
+
+        // calculate the number of liquidity tokens to return to user using:
+        liquidityTokenQty = calculateLiquidityTokenQtyForSingleAssetEntry(
+            _totalSupplyOfLiquidityTokens,
+            quoteTokenQty,
+            _internalBalances.quoteTokenReserveQty,
+            baseTokenQtyDecayChange,
+            baseTokenDecay
+        );
+
+        return (quoteTokenQty, liquidityTokenQty);
+    }
 }

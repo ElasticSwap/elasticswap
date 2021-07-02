@@ -73,12 +73,12 @@ describe("Exchange", () => {
     );
 
     // ensure our internal accounting tracks
-    expect(
-      (await exchange.internalBalances()).quoteTokenReserveQty
-    ).to.equal(amountToAdd);
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(amountToAdd);
+    expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+      amountToAdd
+    );
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+      amountToAdd
+    );
 
     // check token balances after (should be reduced)
     expect(await quoteToken.balanceOf(accounts[0].address)).to.equal(
@@ -102,12 +102,12 @@ describe("Exchange", () => {
     );
 
     // ensure our internal accounting tracks
-    expect(
-      (await exchange.internalBalances()).quoteTokenReserveQty
-    ).to.equal(amountToAdd - amountToRedeem);
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(amountToAdd - amountToRedeem);
+    expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+      amountToAdd - amountToRedeem
+    );
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+      amountToAdd - amountToRedeem
+    );
 
     // confirm expected balances after redemption
     expect(await quoteToken.balanceOf(accounts[0].address)).to.equal(
@@ -166,12 +166,12 @@ describe("Exchange", () => {
     );
 
     // ensure our internal accounting tracks
-    expect(
-      (await exchange.internalBalances()).quoteTokenReserveQty
-    ).to.equal(amountToAdd);
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(amountToAdd);
+    expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+      amountToAdd
+    );
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+      amountToAdd
+    );
 
     // simulate a rebase by sending more tokens to our exchange contract.
     expect(await quoteToken.balanceOf(exchange.address)).to.equal(amountToAdd);
@@ -209,12 +209,10 @@ describe("Exchange", () => {
     expect(await exchange.balanceOf(liquidityProvider.address)).to.equal(0);
 
     // ensure our internal accounting tracks
-    expect(
-      (await exchange.internalBalances()).quoteTokenReserveQty
-    ).to.equal(0);
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(0);
+    expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+      0
+    );
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(0);
 
     // ensure we have no balance left of quote or base tokens.
     expect(await quoteToken.balanceOf(exchange.address)).to.equal(0);
@@ -518,12 +516,8 @@ describe("Exchange", () => {
 
     // omega
     const internalQuoteTokenToBaseTokenQty =
-      (
-        await exchange.internalBalances()
-      ).quoteTokenReserveQty.toNumber() /
-      (
-        await exchange.internalBalances()
-      ).baseTokenReserveQty.toNumber();
+      (await exchange.internalBalances()).quoteTokenReserveQty.toNumber() /
+      (await exchange.internalBalances()).baseTokenReserveQty.toNumber();
 
     // alphaDecay / omega
     const baseTokenQtyNeededToRemoveDecay = Math.floor(
@@ -680,12 +674,8 @@ describe("Exchange", () => {
 
     // omega
     const internalQuoteTokenToBaseTokenQty =
-      (
-        await exchange.internalBalances()
-      ).quoteTokenReserveQty.toNumber() /
-      (
-        await exchange.internalBalances()
-      ).baseTokenReserveQty.toNumber();
+      (await exchange.internalBalances()).quoteTokenReserveQty.toNumber() /
+      (await exchange.internalBalances()).baseTokenReserveQty.toNumber();
 
     // alphaDecay / omega
     const baseTokenQtyNeededToRemoveDecay = Math.floor(
@@ -937,12 +927,12 @@ describe("Exchange", () => {
 
     // confirm that the exchange internal accounting of reserves is the amount
     // added by the first liquidity provider.
-    expect(
-      (await exchange.internalBalances()).quoteTokenReserveQty
-    ).to.equal(10);
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(50);
+    expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+      10
+    );
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+      50
+    );
 
     // confirm the "decay" is equal to the rebase amount. (this is alphaDecay)
     const quoteTokenDecay =
@@ -1086,12 +1076,12 @@ describe("Exchange", () => {
     );
 
     // confirm internal accounting is unchanged.
-    expect(
-      (await exchange.internalBalances()).quoteTokenReserveQty
-    ).to.equal(quoteTokenLiquidityToAdd);
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(baseTokenLiquidityToAdd);
+    expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+      quoteTokenLiquidityToAdd
+    );
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+      baseTokenLiquidityToAdd
+    );
 
     // confirm the "decay" is equal to the re-based amount times the previous iOmega (B/A). (this is betaDecay)
     const iOmega = baseTokenLiquidityToAdd / quoteTokenLiquidityToAdd;
@@ -1124,9 +1114,9 @@ describe("Exchange", () => {
     );
 
     // base token accounting should have not have changed
-    expect(
-      (await exchange.internalBalances()).baseTokenReserveQty
-    ).to.equal(baseTokenLiquidityToAdd);
+    expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+      baseTokenLiquidityToAdd
+    );
     expect(await baseToken.balanceOf(exchange.address)).to.equal(
       baseTokenLiquidityToAdd
     );
@@ -1346,12 +1336,8 @@ describe("Exchange", () => {
 
     // execute a trade that could drain all remaining quote reserves;
     const internalPriceRatio =
-      (
-        await exchange.internalBalances()
-      ).quoteTokenReserveQty.toNumber() /
-      (
-        await exchange.internalBalances()
-      ).baseTokenReserveQty.toNumber(); // omega
+      (await exchange.internalBalances()).quoteTokenReserveQty.toNumber() /
+      (await exchange.internalBalances()).baseTokenReserveQty.toNumber(); // omega
     const baseTokenSwapQty = Math.floor(
       liquidityProviderInitialQuoteBalances / internalPriceRatio
     );
@@ -1432,12 +1418,12 @@ describe("Exchange", () => {
 
       // confirm that the exchange internal accounting of reserves is the amount
       // added by the first liquidity provider.
-      expect(
-        (await exchange.internalBalances()).quoteTokenReserveQty
-      ).to.equal(10);
-      expect(
-        (await exchange.internalBalances()).baseTokenReserveQty
-      ).to.equal(50);
+      expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+        10
+      );
+      expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+        50
+      );
 
       // confirm there is no "decay"
       const quoteTokenDecay =
