@@ -8,6 +8,7 @@ describe("Exchange", () => {
   let accounts;
   let liquidityFee;
   let initialSupply;
+  let mathLib;
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -31,6 +32,9 @@ describe("Exchange", () => {
 
     liquidityFee = (await exchange.liquidityFee()) / 10000;
     initialSupply = await baseToken.totalSupply();
+
+    const MathLib = await deployments.get("MathLib");
+    mathLib = new ethers.Contract(MathLib.address, MathLib.abi, accounts[0]);
   });
 
   it("Should deploy with correct name, symbol and addresses", async () => {
@@ -1249,6 +1253,98 @@ describe("Exchange", () => {
     expect(await baseToken.balanceOf(liquidityProvider.address)).to.equal(
       liquidityProviderInitialBalances
     );
+  });
+
+  it("Should not allow a trade to drain all liquidity due to a rebase down", async () => {
+    // create expiration 50 minutes from now.
+    const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
+    const liquidityProvider = accounts[1];
+    const trader = accounts[2];
+
+    // send users (liquidity provider) quote and base tokens for easy accounting.
+    const liquidityProviderInitialBalances = 1000000;
+    await quoteToken.transfer(
+      liquidityProvider.address,
+      liquidityProviderInitialBalances
+    );
+    await baseToken.transfer(
+      liquidityProvider.address,
+      liquidityProviderInitialBalances
+    );
+
+    // the trader needs base tokens to trade for quote tokens, in an attempt to drain all quote tokens
+    // since we have excess base tokens in the system due to the rebase down that will occur.
+    await baseToken.transfer(trader.address, liquidityProviderInitialBalances);
+
+    // add approvals
+    await baseToken
+      .connect(liquidityProvider)
+      .approve(exchange.address, liquidityProviderInitialBalances);
+    await quoteToken
+      .connect(liquidityProvider)
+      .approve(exchange.address, liquidityProviderInitialBalances);
+    await baseToken
+      .connect(trader)
+      .approve(exchange.address, liquidityProviderInitialBalances);
+
+    await exchange.connect(liquidityProvider).addLiquidity(
+      liquidityProviderInitialBalances, // quote token
+      liquidityProviderInitialBalances, // base token
+      1,
+      1,
+      liquidityProvider.address,
+      expiration
+    );
+
+    // simulate a rebase down by sending tokens from our exchange contract away.  90% rebase down.
+    const quoteTokenRebaseDownAmount = liquidityProviderInitialBalances * 0.9;
+    await quoteToken.simulateRebaseDown(
+      exchange.address,
+      quoteTokenRebaseDownAmount
+    );
+
+    // confirm the exchange now has the expected balance after rebase
+    const quoteTokenExternalReserveQty =
+      liquidityProviderInitialBalances - quoteTokenRebaseDownAmount;
+    expect(await quoteToken.balanceOf(exchange.address)).to.equal(
+      quoteTokenExternalReserveQty
+    );
+    expect(await baseToken.balanceOf(exchange.address)).to.equal(
+      liquidityProviderInitialBalances
+    );
+
+    // execute a trade that could drain all remaining quote reserves;
+    const internalPriceRatio =
+      (await exchange.internalQuoteTokenReserveQty()).toNumber() /
+      (await exchange.internalBaseTokenReserveQty()).toNumber(); // omega
+    const baseTokenSwapQty = Math.floor(
+      liquidityProviderInitialBalances / internalPriceRatio
+    );
+
+    // confirm that this qty would in fact remove all quote tokens from the exchange.
+    const quoteTokenQtyToReturn = await mathLib.calculateQtyToReturnAfterFees(
+      baseTokenSwapQty,
+      await exchange.internalQuoteTokenReserveQty(),
+      await exchange.internalBaseTokenReserveQty(),
+      await exchange.liquidityFee()
+    );
+
+    // the qty this would return based on the the internal reserves (x and y) is more than the total balance in the exchange.
+    expect(quoteTokenQtyToReturn.toNumber()).to.be.greaterThan(
+      (await quoteToken.balanceOf(exchange.address)).toNumber()
+    );
+
+    // confirm that the trader has no quote token
+    expect(await quoteToken.balanceOf(trader.address)).to.equal(0);
+
+    // our internal math should prevent this from occurring by adjusting the qty curve correctly and the below transaction should not revert.
+    await exchange
+      .connect(trader)
+      .swapBaseTokenForQuoteToken(baseTokenSwapQty, 1, expiration);
+
+    expect(
+      (await quoteToken.balanceOf(trader.address)).toNumber()
+    ).to.be.greaterThan(0);
   });
 
   describe("Revert statements", () => {

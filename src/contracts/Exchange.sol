@@ -460,13 +460,31 @@ contract Exchange is ERC20 {
             "Exchange: INSUFFICIENT_TOKEN_QTY"
         );
 
-        uint256 quoteTokenQty =
-            MathLib.calculateQtyToReturnAfterFees(
-                _baseTokenQty,
-                internalBaseTokenReserveQty,
-                internalQuoteTokenReserveQty,
-                liquidityFee
-            );
+        uint256 quoteTokenQty;
+        // check to see if we have experience base token decay / a rebase down event
+        uint256 quoteTokenReserveQty =
+            IERC20(quoteToken).balanceOf(address(this));
+        
+        if(quoteTokenReserveQty < internalQuoteTokenReserveQty) 
+        { // we have less reserves than our current price curve will expect, we need to adjust the curve
+            uint256 pricingRatio = internalQuoteTokenReserveQty / internalBaseTokenReserveQty; // omega
+            uint impliedBaseTokenQty = quoteTokenReserveQty / pricingRatio;
+            quoteTokenQty =
+                MathLib.calculateQtyToReturnAfterFees(
+                    _baseTokenQty,
+                    quoteTokenReserveQty,
+                    impliedBaseTokenQty,
+                    liquidityFee
+                );
+        } else { // we have the same or more reserves, no need to alter the curve.
+            quoteTokenQty =
+                MathLib.calculateQtyToReturnAfterFees(
+                    _baseTokenQty,
+                    internalBaseTokenReserveQty,
+                    internalQuoteTokenReserveQty,
+                    liquidityFee
+                );
+        }
 
         require(
             quoteTokenQty > _minQuoteTokenQty,
