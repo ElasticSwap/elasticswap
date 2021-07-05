@@ -1583,11 +1583,11 @@ describe("Exchange", () => {
         quoteTokenRebaseDownAmount
       );
 
-      // if we attempt to add a minimum of more than 200 base tokens, this should revert
+      // if we attempt to add a minimum of more than 2 quote tokens, this should revert
       await expect(
         exchange.connect(liquidityProvider2).addQuoteTokenLiquidity(
-          10, // alphaDecay / omega = 40 / .2 = 200
-          5,
+          10, 
+          5, // min 5 when we only have 2 tokens worth of decay.
           liquidityProvider2.address,
           expiration
         )
