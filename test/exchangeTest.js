@@ -1586,7 +1586,7 @@ describe("Exchange", () => {
       // if we attempt to add a minimum of more than 2 quote tokens, this should revert
       await expect(
         exchange.connect(liquidityProvider2).addQuoteTokenLiquidity(
-          10, 
+          10,
           5, // min 5 when we only have 2 tokens worth of decay.
           liquidityProvider2.address,
           expiration

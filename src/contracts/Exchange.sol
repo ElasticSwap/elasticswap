@@ -87,7 +87,7 @@ contract Exchange is ERC20 {
             // we have outstanding liquidity tokens present and an existing price curve
 
             // confirm that we have no beta or alpha decay present
-            // if we do, we need to resolve that first            
+            // if we do, we need to resolve that first
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
 
@@ -97,19 +97,23 @@ contract Exchange is ERC20 {
                 // we have more quote token than expected (quote token decay) due to rebase up
                 // we first need to handle this situation by requiring this user
                 // to add base tokens
-                (baseTokenQty, liquidityTokenQty) = MathLib.calculateAddBaseTokenLiquidityQuantities(
+                (baseTokenQty, liquidityTokenQty) = MathLib
+                    .calculateAddBaseTokenLiquidityQuantities(
                     _baseTokenQtyDesired,
-                    0,  // there is no minimum for this particular call since we may use base tokens later.
+                    0, // there is no minimum for this particular call since we may use base tokens later.
                     quoteTokenReserveQty,
                     this.totalSupply(),
                     internalBalances
                 );
-            } else if (quoteTokenReserveQty < internalBalances.quoteTokenReserveQty) {
-                // we have less quote token than expected (base token decay) due to a rebase down 
+            } else if (
+                quoteTokenReserveQty < internalBalances.quoteTokenReserveQty
+            ) {
+                // we have less quote token than expected (base token decay) due to a rebase down
                 // we first need to handle this by adding quote tokens to offset this.
-                (quoteTokenQty, liquidityTokenQty) = MathLib.calculateAddQuoteTokenLiquidityQuantities(
+                (quoteTokenQty, liquidityTokenQty) = MathLib
+                    .calculateAddQuoteTokenLiquidityQuantities(
                     _quoteTokenQtyDesired,
-                    0,  // there is no minimum for this particular call since we may use quote tokens later.
+                    0, // there is no minimum for this particular call since we may use quote tokens later.
                     quoteTokenReserveQty,
                     this.totalSupply(),
                     internalBalances
