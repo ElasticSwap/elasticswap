@@ -36,7 +36,7 @@ library MathLib {
         return (a * b) + (WAD / 2) / WAD;
     }
 
-    function subtractOrZero(uint256 a, uint256 b)
+    function conditionalSubtract(uint256 a, uint256 b)
         public
         pure
         returns (uint256)
@@ -271,7 +271,7 @@ library MathLib {
                 );
             assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
             require(
-                _quoteTokenQtyDesired >= _quoteTokenQtyMin,
+                requiredQuoteTokenQty >= _quoteTokenQtyMin,
                 "Exchange: INSUFFICIENT_QUOTE_QTY"
             );
             quoteTokenQty = requiredQuoteTokenQty;

@@ -133,14 +133,14 @@ contract Exchange is ERC20 {
                     quoteTokenQtyFromDecay < _quoteTokenQtyDesired
                 ) {
                     // the user still has qty that they desire to contribute to the exchange for liquidity
+                    // TODO: this call below can revert the entire transaction 
+                    // which is not desirable (ln 272 assertion in MathLib)
                     (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib
                         .calculateAddLiquidityQuantities(
                         _quoteTokenQtyDesired - quoteTokenQtyFromDecay, // safe from underflow based on above IF
                         _baseTokenQtyDesired - baseTokenQtyFromDecay, // safe from underflow based on above IF
-                        _quoteTokenQtyMin.subtractOrZero(
-                            quoteTokenQtyFromDecay
-                        ),
-                        _baseTokenQtyMin.subtractOrZero(baseTokenQtyFromDecay),
+                        0, // we will check minimums below
+                        0, // we will check minimums below
                         IERC20(baseToken).balanceOf(address(this)) +
                             baseTokenQtyFromDecay,
                         this.totalSupply() + liquidityTokenQtyFromDecay,
@@ -150,6 +150,17 @@ contract Exchange is ERC20 {
                 quoteTokenQty += quoteTokenQtyFromDecay;
                 baseTokenQty += baseTokenQtyFromDecay;
                 liquidityTokenQty += liquidityTokenQtyFromDecay;
+
+                require(
+                    quoteTokenQty >= _quoteTokenQtyMin,
+                    "Exchange: INSUFFICIENT_QUOTE_QTY"
+                );
+
+                require(
+                    baseTokenQty >= _baseTokenQtyMin,
+                    "Exchange: INSUFFICIENT_BASE_QTY"
+                );
+
             } else {
                 // the user is just doing a simple double asset entry / providing both quote and base.
                 (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib
