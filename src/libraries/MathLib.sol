@@ -218,4 +218,53 @@ library MathLib {
 
         return (quoteTokenQty, liquidityTokenQty);
     }
+
+    function calculateAddLiquidityQuantities(
+        uint256 _quoteTokenQtyDesired,
+        uint256 _baseTokenQtyDesired,
+        uint256 _quoteTokenQtyMin,
+        uint256 _baseTokenQtyMin,
+        uint256 _baseTokenReserveQty,
+        uint256 _totalSupplyOfLiquidityTokens,
+        Exchange.InternalBalances storage _internalBalances
+    ) public returns (uint256 quoteTokenQty, uint256 baseTokenQty, uint256 liquidityTokenQty) {
+
+        uint256 requiredBaseTokenQty = calculateQty(
+                _quoteTokenQtyDesired,
+                _internalBalances.quoteTokenReserveQty,
+                _internalBalances.baseTokenReserveQty
+            );
+
+        if (requiredBaseTokenQty <= _baseTokenQtyDesired) {
+            // user has to provide less than their desired amount
+            require(
+                requiredBaseTokenQty >= _baseTokenQtyMin,
+                "Exchange: INSUFFICIENT_BASE_QTY"
+            );
+            quoteTokenQty = _quoteTokenQtyDesired;
+            baseTokenQty = requiredBaseTokenQty;
+        } else {
+            // we need to check the opposite way.
+            uint256 requiredQuoteTokenQty = calculateQty(
+                    _baseTokenQtyDesired,
+                    _internalBalances.baseTokenReserveQty,
+                    _internalBalances.quoteTokenReserveQty
+                );
+            assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
+            require(
+                _quoteTokenQtyDesired >= _quoteTokenQtyMin,
+                "Exchange: INSUFFICIENT_QUOTE_QTY"
+            );
+            quoteTokenQty = requiredQuoteTokenQty;
+            baseTokenQty = _baseTokenQtyDesired;
+        }
+
+        liquidityTokenQty = calculateLiquidityTokenQtyForDoubleAssetEntry(
+            _totalSupplyOfLiquidityTokens,
+            baseTokenQty,
+            _baseTokenReserveQty);
+
+        _internalBalances.quoteTokenReserveQty += quoteTokenQty;
+        _internalBalances.baseTokenReserveQty += baseTokenQty;
+    }
 }

@@ -92,7 +92,8 @@ contract Exchange is ERC20 {
                 IERC20(quoteToken).balanceOf(address(this));
 
             // TODO: can we end up in an off by one situation where the below always ends up getting called
-            // and wasting gas for what is a trivial amount of decay that cannot be resolved?  IE we are always off by 1...
+            // and wasting gas for what is a trivial amount of decay that cannot be resolved?  
+            // IE we are always off by 1...
             if (quoteTokenReserveQty > internalBalances.quoteTokenReserveQty) {
                 // we have more quote token than expected (quote token decay) due to rebase up
                 // we first need to handle this situation by requiring this user
@@ -120,59 +121,29 @@ contract Exchange is ERC20 {
                 );
             }
 
-            //NOTE: we need to take into account the amounts that are going to be consumed in the above if /else if statements
+            //NOTE: we need to take into account the amounts that are going to be 
+            // consumed in the above if /else if statements
             // IE if we are using 500 baseTokens from the user, we need to remove those from the below calcs
 
             // NOTE: we also need to check if after the above calls, they have anything left to double asset entry with?
             // if they don't we can bypass some of the next logic.
-
-            uint256 requiredBaseTokenQty =
-                MathLib.calculateQty(
-                    _quoteTokenQtyDesired,
-                    internalBalances.quoteTokenReserveQty,
-                    internalBalances.baseTokenReserveQty
-                );
-
-            if (requiredBaseTokenQty <= _baseTokenQtyDesired) {
-                // user has to provide less than their desired amount
-                require(
-                    requiredBaseTokenQty >= _baseTokenQtyMin,
-                    "Exchange: INSUFFICIENT_BASE_QTY"
-                );
-                quoteTokenQty = _quoteTokenQtyDesired;
-                baseTokenQty = requiredBaseTokenQty;
-            } else {
-                // we need to check the opposite way.
-                uint256 requiredQuoteTokenQty =
-                    MathLib.calculateQty(
-                        _baseTokenQtyDesired,
-                        internalBalances.baseTokenReserveQty,
-                        internalBalances.quoteTokenReserveQty
-                    );
-                assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
-                require(
-                    _quoteTokenQtyDesired >= _quoteTokenQtyMin,
-                    "Exchange: INSUFFICIENT_QUOTE_QTY"
-                );
-                quoteTokenQty = requiredQuoteTokenQty;
-                baseTokenQty = _baseTokenQtyDesired;
-            }
-
-            liquidityTokenQty = MathLib
-                .calculateLiquidityTokenQtyForDoubleAssetEntry(
+            (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib.calculateAddLiquidityQuantities( 
+                _quoteTokenQtyDesired,
+                _baseTokenQtyDesired,
+                _quoteTokenQtyMin,
+                _baseTokenQtyMin,
+                IERC20(baseToken).balanceOf(address(this)),
                 this.totalSupply(),
-                baseTokenQty,
-                IERC20(baseToken).balanceOf(address(this))
+                internalBalances
             );
         } else {
             // this user will set the initial pricing curve
             quoteTokenQty = _quoteTokenQtyDesired;
             baseTokenQty = _baseTokenQtyDesired;
             liquidityTokenQty = _baseTokenQtyDesired;
+            internalBalances.quoteTokenReserveQty += quoteTokenQty;
+            internalBalances.baseTokenReserveQty += baseTokenQty;
         }
-
-        internalBalances.quoteTokenReserveQty += quoteTokenQty;
-        internalBalances.baseTokenReserveQty += baseTokenQty;
 
         IERC20(quoteToken).safeTransferFrom(
             msg.sender,
