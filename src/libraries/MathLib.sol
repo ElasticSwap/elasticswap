@@ -36,6 +36,17 @@ library MathLib {
         return (a * b) + (WAD / 2) / WAD;
     }
 
+    function subtractOrZero(uint256 a, uint256 b)
+        public
+        pure
+        returns (uint256)
+    {
+        if (b >= a) {
+            return 0;
+        }
+        return a - b;
+    }
+
     /**
      * @dev used to calculate the qty of token a liquidity provider
      * must add in order to maintain the current reserve ratios
@@ -227,9 +238,16 @@ library MathLib {
         uint256 _baseTokenReserveQty,
         uint256 _totalSupplyOfLiquidityTokens,
         Exchange.InternalBalances storage _internalBalances
-    ) public returns (uint256 quoteTokenQty, uint256 baseTokenQty, uint256 liquidityTokenQty) {
-
-        uint256 requiredBaseTokenQty = calculateQty(
+    )
+        public
+        returns (
+            uint256 quoteTokenQty,
+            uint256 baseTokenQty,
+            uint256 liquidityTokenQty
+        )
+    {
+        uint256 requiredBaseTokenQty =
+            calculateQty(
                 _quoteTokenQtyDesired,
                 _internalBalances.quoteTokenReserveQty,
                 _internalBalances.baseTokenReserveQty
@@ -245,7 +263,8 @@ library MathLib {
             baseTokenQty = requiredBaseTokenQty;
         } else {
             // we need to check the opposite way.
-            uint256 requiredQuoteTokenQty = calculateQty(
+            uint256 requiredQuoteTokenQty =
+                calculateQty(
                     _baseTokenQtyDesired,
                     _internalBalances.baseTokenReserveQty,
                     _internalBalances.quoteTokenReserveQty
@@ -262,7 +281,8 @@ library MathLib {
         liquidityTokenQty = calculateLiquidityTokenQtyForDoubleAssetEntry(
             _totalSupplyOfLiquidityTokens,
             baseTokenQty,
-            _baseTokenReserveQty);
+            _baseTokenReserveQty
+        );
 
         _internalBalances.quoteTokenReserveQty += quoteTokenQty;
         _internalBalances.baseTokenReserveQty += baseTokenQty;

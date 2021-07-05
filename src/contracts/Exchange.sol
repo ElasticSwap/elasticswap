@@ -79,6 +79,7 @@ contract Exchange is ERC20 {
         uint256 _expirationTimestamp
     ) external {
         isNotExpired(_expirationTimestamp);
+
         uint256 quoteTokenQty;
         uint256 baseTokenQty;
         uint256 liquidityTokenQty;
@@ -91,14 +92,18 @@ contract Exchange is ERC20 {
             uint256 quoteTokenReserveQty =
                 IERC20(quoteToken).balanceOf(address(this));
 
+            uint256 quoteTokenQtyFromDecay;
+            uint256 baseTokenQtyFromDecay;
+            uint256 liquidityTokenQtyFromDecay;
+
             // TODO: can we end up in an off by one situation where the below always ends up getting called
-            // and wasting gas for what is a trivial amount of decay that cannot be resolved?  
+            // and wasting gas for what is a trivial amount of decay that cannot be resolved?
             // IE we are always off by 1...
             if (quoteTokenReserveQty > internalBalances.quoteTokenReserveQty) {
                 // we have more quote token than expected (quote token decay) due to rebase up
                 // we first need to handle this situation by requiring this user
                 // to add base tokens
-                (baseTokenQty, liquidityTokenQty) = MathLib
+                (baseTokenQtyFromDecay, liquidityTokenQtyFromDecay) = MathLib
                     .calculateAddBaseTokenLiquidityQuantities(
                     _baseTokenQtyDesired,
                     0, // there is no minimum for this particular call since we may use base tokens later.
@@ -111,7 +116,7 @@ contract Exchange is ERC20 {
             ) {
                 // we have less quote token than expected (base token decay) due to a rebase down
                 // we first need to handle this by adding quote tokens to offset this.
-                (quoteTokenQty, liquidityTokenQty) = MathLib
+                (quoteTokenQtyFromDecay, liquidityTokenQtyFromDecay) = MathLib
                     .calculateAddQuoteTokenLiquidityQuantities(
                     _quoteTokenQtyDesired,
                     0, // there is no minimum for this particular call since we may use quote tokens later.
@@ -121,21 +126,43 @@ contract Exchange is ERC20 {
                 );
             }
 
-            //NOTE: we need to take into account the amounts that are going to be 
-            // consumed in the above if /else if statements
-            // IE if we are using 500 baseTokens from the user, we need to remove those from the below calcs
-
-            // NOTE: we also need to check if after the above calls, they have anything left to double asset entry with?
-            // if they don't we can bypass some of the next logic.
-            (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib.calculateAddLiquidityQuantities( 
-                _quoteTokenQtyDesired,
-                _baseTokenQtyDesired,
-                _quoteTokenQtyMin,
-                _baseTokenQtyMin,
-                IERC20(baseToken).balanceOf(address(this)),
-                this.totalSupply(),
-                internalBalances
-            );
+            if (liquidityTokenQtyFromDecay != 0) {
+                // the user dealt with part of the decay and we need to add values from that.
+                if (
+                    baseTokenQtyFromDecay < _baseTokenQtyDesired &&
+                    quoteTokenQtyFromDecay < _quoteTokenQtyDesired
+                ) {
+                    // the user still has qty that they desire to contribute to the exchange for liquidity
+                    (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib
+                        .calculateAddLiquidityQuantities(
+                        _quoteTokenQtyDesired - quoteTokenQtyFromDecay, // safe from underflow based on above IF
+                        _baseTokenQtyDesired - baseTokenQtyFromDecay, // safe from underflow based on above IF
+                        _quoteTokenQtyMin.subtractOrZero(
+                            quoteTokenQtyFromDecay
+                        ),
+                        _baseTokenQtyMin.subtractOrZero(baseTokenQtyFromDecay),
+                        IERC20(baseToken).balanceOf(address(this)) +
+                            baseTokenQtyFromDecay,
+                        this.totalSupply() + liquidityTokenQtyFromDecay,
+                        internalBalances // NOTE: these balances have already been updated when we did the decay math.
+                    );
+                }
+                quoteTokenQty += quoteTokenQtyFromDecay;
+                baseTokenQty += baseTokenQtyFromDecay;
+                liquidityTokenQty += liquidityTokenQtyFromDecay;
+            } else {
+                // the user is just doing a simple double asset entry / providing both quote and base.
+                (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib
+                    .calculateAddLiquidityQuantities(
+                    _quoteTokenQtyDesired,
+                    _baseTokenQtyDesired,
+                    _quoteTokenQtyMin,
+                    _baseTokenQtyMin,
+                    IERC20(baseToken).balanceOf(address(this)),
+                    this.totalSupply(),
+                    internalBalances
+                );
+            }
         } else {
             // this user will set the initial pricing curve
             quoteTokenQty = _quoteTokenQtyDesired;
