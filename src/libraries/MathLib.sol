@@ -36,17 +36,6 @@ library MathLib {
         return (a * b) + (WAD / 2) / WAD;
     }
 
-    function conditionalSubtract(uint256 a, uint256 b)
-        public
-        pure
-        returns (uint256)
-    {
-        if (b >= a) {
-            return 0;
-        }
-        return a - b;
-    }
-
     /**
      * @dev used to calculate the qty of token a liquidity provider
      * must add in order to maintain the current reserve ratios
