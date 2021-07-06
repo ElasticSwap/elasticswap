@@ -133,8 +133,6 @@ contract Exchange is ERC20 {
                     quoteTokenQtyFromDecay < _quoteTokenQtyDesired
                 ) {
                     // the user still has qty that they desire to contribute to the exchange for liquidity
-                    // TODO: this call below can revert the entire transaction 
-                    // which is not desirable (ln 272 assertion in MathLib)
                     (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib
                         .calculateAddLiquidityQuantities(
                         _quoteTokenQtyDesired - quoteTokenQtyFromDecay, // safe from underflow based on above IF
@@ -144,7 +142,8 @@ contract Exchange is ERC20 {
                         IERC20(baseToken).balanceOf(address(this)) +
                             baseTokenQtyFromDecay,
                         this.totalSupply() + liquidityTokenQtyFromDecay,
-                        internalBalances // NOTE: these balances have already been updated when we did the decay math.
+                        internalBalances, // NOTE: these balances have already been updated when we did the decay math.
+                        false
                     );
                 }
                 quoteTokenQty += quoteTokenQtyFromDecay;
@@ -160,7 +159,6 @@ contract Exchange is ERC20 {
                     baseTokenQty >= _baseTokenQtyMin,
                     "Exchange: INSUFFICIENT_BASE_QTY"
                 );
-
             } else {
                 // the user is just doing a simple double asset entry / providing both quote and base.
                 (quoteTokenQty, baseTokenQty, liquidityTokenQty) = MathLib
@@ -171,7 +169,8 @@ contract Exchange is ERC20 {
                     _baseTokenQtyMin,
                     IERC20(baseToken).balanceOf(address(this)),
                     this.totalSupply(),
-                    internalBalances
+                    internalBalances,
+                    true
                 );
             }
         } else {

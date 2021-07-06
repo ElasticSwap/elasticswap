@@ -237,7 +237,8 @@ library MathLib {
         uint256 _baseTokenQtyMin,
         uint256 _baseTokenReserveQty,
         uint256 _totalSupplyOfLiquidityTokens,
-        Exchange.InternalBalances storage _internalBalances
+        Exchange.InternalBalances storage _internalBalances,
+        bool _throwOnBadRatio
     )
         public
         returns (
@@ -269,7 +270,15 @@ library MathLib {
                     _internalBalances.baseTokenReserveQty,
                     _internalBalances.quoteTokenReserveQty
                 );
-            assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
+            // assert(requiredQuoteTokenQty <= _quoteTokenQtyDesired);
+            if (requiredQuoteTokenQty > _quoteTokenQtyDesired) {
+                if (_throwOnBadRatio) {
+                    assert(false); //should this really be an assert vs require?
+                } else {
+                    return (0, 0, 0);
+                }
+            }
+
             require(
                 requiredQuoteTokenQty >= _quoteTokenQtyMin,
                 "Exchange: INSUFFICIENT_QUOTE_QTY"
