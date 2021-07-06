@@ -77,7 +77,18 @@ library MathLib {
             ((_tokenAReserveQty * BASIS_POINTS) + tokenASwapQtyLessFee);
     }
 
-    // gamma = deltaY / Y / 2 * (deltaX / alphaDecay')
+    /**
+     * @dev used to calculate the qty of liquidity tokens (deltaRo) we will be issued to a supplier
+     * of a single asset entry when decay is present.
+     * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
+     * @param _tokenQtyAToAdd the amount of tokens being added by the caller to remove the current decay
+     * @param _internalTokenAReserveQty the internal balance (X or Y) of token A as a result of this transaction
+     * @param _tokenBDecayChange the change that will occur in the decay in the opposite token as a result of
+     * this transaction
+     * @param _tokenBDecay the amount of decay in tokenB
+     *
+     * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
+     */
     function calculateLiquidityTokenQtyForSingleAssetEntry(
         uint256 _totalSupplyOfLiquidityTokens,
         uint256 _tokenQtyAToAdd,
@@ -85,6 +96,7 @@ library MathLib {
         uint256 _tokenBDecayChange,
         uint256 _tokenBDecay
     ) public pure returns (uint256 liquidityTokenQty) {
+        // gamma = deltaY / Y' / 2 * (deltaX / alphaDecay')
         uint256 wGamma =
             wDiv(
                 wMul(
@@ -100,6 +112,15 @@ library MathLib {
             WAD;
     }
 
+    /**
+     * @dev used to calculate the qty of liquidity tokens (deltaRo) we will be issued to a supplier
+     * of a single asset entry when decay is present.
+     * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
+     * @param _baseTokenQty the amount of base token the user it adding to the pool (deltaB / deltaY)
+     * @param _baseTokenReserveBalance the total balance (external) of base tokens in our pool (Beta)
+     *
+     * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
+     */
     function calculateLiquidityTokenQtyForDoubleAssetEntry(
         uint256 _totalSupplyOfLiquidityTokens,
         uint256 _baseTokenQty,
@@ -110,6 +131,19 @@ library MathLib {
             _baseTokenReserveBalance;
     }
 
+    /**
+     * @dev used to calculate the qty of base token required and liquidity tokens (deltaRo) to be issued
+     * in order to add liquidity and remove quote token decay.
+     * @param _baseTokenQtyDesired the amount of base token the user wants to contribute
+     * @param _baseTokenQtyMin the minimum amount of base token the user wants to contribute (allows for slippage)
+     * @param _quoteTokenReserveQty the external quote token reserve qty prior to this transaction
+     * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
+     * @param _internalBalances internal balances struct from our exchange's internal accounting
+     *
+     *
+     * @return baseTokenQty qty of base token the user must supply
+     * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
+     */
     function calculateAddBaseTokenLiquidityQuantities(
         uint256 _baseTokenQtyDesired,
         uint256 _baseTokenQtyMin,
@@ -160,6 +194,18 @@ library MathLib {
         return (baseTokenQty, liquidityTokenQty);
     }
 
+    /**
+     * @dev used to calculate the qty of quote tokens required and liquidity tokens (deltaRo) to be issued
+     * in order to add liquidity and remove quote token decay.
+     * @param _quoteTokenQtyDesired the amount of quote token the user wants to contribute
+     * @param _quoteTokenQtyMin the minimum amount of quote token the user wants to contribute (allows for slippage)
+     * @param _quoteTokenReserveQty the external quote token reserve qty prior to this transaction
+     * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
+     * @param _internalBalances internal balances struct from our exchange's internal accounting
+     *
+     * @return quoteTokenQty qty of quote token the user must supply
+     * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
+     */
     function calculateAddQuoteTokenLiquidityQuantities(
         uint256 _quoteTokenQtyDesired,
         uint256 _quoteTokenQtyMin,
@@ -219,6 +265,23 @@ library MathLib {
         return (quoteTokenQty, liquidityTokenQty);
     }
 
+    /**
+     * @dev calculates the qty of quote and base tokens required and liquidity tokens (deltaRo) to be issued
+     * in order to add liquidity when no decay is present.
+     * @param _quoteTokenQtyDesired the amount of quote token the user wants to contribute
+     * @param _baseTokenQtyDesired the amount of base token the user wants to contribute
+     * @param _quoteTokenQtyMin the minimum amount of quote token the user wants to contribute (allows for slippage)
+     * @param _baseTokenQtyMin the minimum amount of base token the user wants to contribute (allows for slippage)
+     * @param _baseTokenReserveQty the external base token reserve qty prior to this transaction
+     * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
+     * @param _internalBalances internal balances struct from our exchange's internal accounting
+     * @param _throwOnBadRatio should the function assert if the ratio of _quoteTokenQtyDesired/_baseTokenQtyDesired
+     * cannot be honored. Otherwise will return 0s for all balances
+     *
+     * @return quoteTokenQty qty of quote token the user must supply
+     * @return baseTokenQty qty of base token the user must supply
+     * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
+     */
     function calculateAddLiquidityQuantities(
         uint256 _quoteTokenQtyDesired,
         uint256 _baseTokenQtyDesired,
