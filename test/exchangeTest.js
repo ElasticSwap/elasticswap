@@ -1868,7 +1868,7 @@ describe("Exchange", () => {
       );
 
       // confirm the "decay" is equal to the rebase amount. (this is alphaDecay)
-      let baseTokenDecay =
+      const baseTokenDecay =
         (await baseToken.balanceOf(exchange.address)) -
         (await exchange.internalBalances()).baseTokenReserveQty;
       expect(baseTokenDecay).to.equal(rebaseAmount);

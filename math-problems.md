@@ -45,3 +45,16 @@ Possible solutions:
 - Re-evaluate the issuance of Ro. 
 
 
+-------------------
+Using the new formula: 
+new liquidity provider balance: 0
+new liquidity provider LP balance: 999
+new liquidity provider base token exit: 1362
+new liquidity provider quoteToken exit: 1135
+old liquidity provider LP balance: 10000
+old liquidity provider base token exit: 13638 (they put in 15000) 1362 less base tokens
+old liquidity provider quoteToken exit: 11365 (they put in 15000) 3635 less quote Tokens
+exchange quote bal: 0
+exchange base bal: 0
+- After rebase, after lp2 contributes - Sigma = 15000 / (10000 + 2500) = 1.2
+- After lp2 withdraw Sigma should be unchanged = 13638/11365 = 1.2
