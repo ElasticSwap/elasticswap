@@ -218,7 +218,7 @@ describe("MathLib", () => {
       ).to.equal(expectLiquidityTokens2);
     });
 
-    it("Should return the correct qty of liquidity tokens with a rebase up", async () => {
+    it.only("Should return the correct qty of liquidity tokens with a rebase up", async () => {
       // Scenario: We have 1000:5000 A:B or X:Y, a rebase up occurs (of 500 tokens)
       // and a user needs to add 2500 quote tokens to remove the base decay
       const totalSupplyOfLiquidityTokens = 5000;
@@ -227,42 +227,97 @@ describe("MathLib", () => {
       const tokenBDecayChange = 500;
       const tokenBDecay = 500;
 
-      const gamma =
-        (tokenAQtyToAdd / tokenAInternalReserveQtyAfterTransaction / 2) *
-        (tokenBDecayChange / tokenBDecay);
-      const expectLiquidityTokens = Math.floor(
-        (totalSupplyOfLiquidityTokens * gamma) / (1 - gamma)
+      // const gamma =
+      //   (tokenAQtyToAdd / tokenAInternalReserveQtyAfterTransaction / 2) *
+      //   (tokenBDecayChange / tokenBDecay);
+
+      // omega = X/Y
+      const omega = 1000 / 5000;
+
+      // ratio : alpha / omega
+      // 1500 - alpha (after rebase up of 500)
+      const ratio = 1500 / omega;
+      console.log("ratio: ", ratio);
+
+      // denominator = ratio + internalTokenAReserveQty
+      // internalTokenAReserveQty: the internal balance (X or Y) of token A as a result of this transaction
+      const denominator = ratio + tokenAInternalReserveQtyAfterTransaction;
+      console.log("denominator", denominator);
+
+      const altGamma = tokenAQtyToAdd / denominator;
+      console.log("altGamma: ", altGamma);
+
+      const expectLiquidityTokens = Math.ceil(
+        (totalSupplyOfLiquidityTokens * altGamma) / (1 - altGamma)
       );
-      expect(
+
+      console.log("expectLiquidityTokens: ", expectLiquidityTokens.toString());
+
+      const calculatedLiquidityTokenQtyForSingleAssetEntry =
         await mathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+          1500,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd,
           tokenAInternalReserveQtyAfterTransaction,
           tokenBDecayChange,
-          tokenBDecay
-        )
-      ).to.equal(expectLiquidityTokens);
+          tokenBDecay,
+          await mathLib.wDiv(1000, 5000)
+        );
+      console.log(
+        "calculatedLiquidityTokenQtyForSingleAssetEntry: ",
+        calculatedLiquidityTokenQtyForSingleAssetEntry.toString()
+      );
+
+      expect(calculatedLiquidityTokenQtyForSingleAssetEntry).to.equal(
+        expectLiquidityTokens
+      );
 
       // if we supply half, and remove half the decay, we should get roughly 1/2 the tokens
       const tokenAQtyToAdd2 = 2500;
       const tokenAInternalReserveQtyAfterTransaction2 = 6250;
       const tokenBDecayChange2 = 250;
-      const gamma2 =
-        (tokenAQtyToAdd2 / tokenAInternalReserveQtyAfterTransaction2 / 2) *
-        (tokenBDecayChange2 / tokenBDecay);
-      const expectLiquidityTokens2 = Math.floor(
-        (totalSupplyOfLiquidityTokens * gamma2) / (1 - gamma2)
-      );
 
-      expect(
+      // omega = X/Y
+      const omega2 = 1000 / 5000;
+
+      // ratio : alpha / omega
+      // 1500 - alpha (after rebase up of 500)
+      const ratio2 = 1500 / omega2;
+      console.log("ratio2: ", ratio2);
+
+      // denominator = ratio + internalTokenAReserveQty
+      // internalTokenAReserveQty: the internal balance (X or Y) of token A as a result of this transaction
+      const denominator2 = ratio + tokenAInternalReserveQtyAfterTransaction2;
+      console.log("denominator2", denominator2);
+
+      const altGamma2 = tokenAQtyToAdd2 / denominator2;
+      console.log("altGamma2: ", altGamma2);
+
+      // const gamma2 =
+      //   (tokenAQtyToAdd2 / tokenAInternalReserveQtyAfterTransaction2 / 2) *
+      //   (tokenBDecayChange2 / tokenBDecay);
+
+      const expectLiquidityTokens2 = Math.floor(
+        (totalSupplyOfLiquidityTokens * altGamma2) / (1 - altGamma2)
+      );
+      const calculatedLiquidityTokenQtyForSingleAssetEntry2 =
         await mathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+          1500,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd2,
           tokenAInternalReserveQtyAfterTransaction2,
           tokenBDecayChange2,
-          tokenBDecay
-        )
-      ).to.equal(expectLiquidityTokens2);
+          tokenBDecay,
+          await mathLib.wDiv(1000, 5000)
+        );
+      console.log(
+        "calculatedLiquidityTokenQtyForSingleAssetEntry2: ",
+        calculatedLiquidityTokenQtyForSingleAssetEntry2.toString()
+      );
+
+      expect(calculatedLiquidityTokenQtyForSingleAssetEntry2).to.equal(
+        expectLiquidityTokens2
+      );
     });
   });
 
