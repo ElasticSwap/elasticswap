@@ -1801,7 +1801,7 @@ describe("Exchange", () => {
   });
 
   describe("addLiquidity", () => {
-    it.only("Should allow for adding quote token liquidity (only) after a rebase up has occurred, and correct withdraw of re-based qty", async () => {
+    it("Should allow for adding quote token liquidity (only) after a rebase up has occurred, and correct withdraw of re-based qty", async () => {
       // create expiration 50 minutes from now.
       const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
       const liquidityProvider = accounts[1];
@@ -2146,7 +2146,7 @@ describe("Exchange", () => {
       );
     });
 
-    it.only("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
+    it("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
       // create expiration 50 minutes from now.
       const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
       const liquidityProvider = accounts[1];

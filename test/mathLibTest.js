@@ -220,7 +220,7 @@ describe("MathLib", () => {
 
     it.only("Should return the correct qty of liquidity tokens with a rebase up", async () => {
       // Scenario: We have 1000:5000 A:B or X:Y, a rebase up occurs (of 500 tokens)
-      // and a user needs to add 2500 quote tokens to remove the base decay
+      // and a user needs to add 2500 quote tokens(deltaY: 2500 = 500 / (1000/5000)) to remove the base decay
       const totalSupplyOfLiquidityTokens = 5000;
       const tokenAQtyToAdd = 2500;
       const tokenAInternalReserveQtyAfterTransaction = 7500; // 5000 + 2500 to offset rebase up
@@ -233,6 +233,10 @@ describe("MathLib", () => {
 
       // omega = X/Y
       const omega = 1000 / 5000;
+
+      // deltaY is the number of quotetokens required to offset decay
+      const deltaY = tokenBDecay / omega;
+      console.log("deltaY: ", deltaY);
 
       // ratio : alpha / omega
       // 1500 - alpha (after rebase up of 500)
@@ -273,7 +277,7 @@ describe("MathLib", () => {
       );
 
       // if we supply half, and remove half the decay, we should get roughly 1/2 the tokens
-      const tokenAQtyToAdd2 = 2500;
+      const tokenAQtyToAdd2 = 1250;
       const tokenAInternalReserveQtyAfterTransaction2 = 6250;
       const tokenBDecayChange2 = 250;
 
