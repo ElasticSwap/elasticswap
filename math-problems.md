@@ -69,7 +69,7 @@ LP 1 balance : 10000 (put in 10k Base and Quote tokens)
 
 Using the new formula: 
 new liquidity provider balance: 0
-new liquidity provider LP balance: 2000 (?)
+new liquidity provider LP balance: 2000 
 new liquidity provider base token exit: 1250 (put in 0)
 new liquidity provider quoteToken exit: 1167 (put in 2500)
 old liquidity provider LP balance: 10000
@@ -89,15 +89,40 @@ exchange base bal: 0
 LP 1 balance : 10000 (put in 10k Base and Quote tokens)
 
 Using the new formula: 
-new liquidity provider balance: 0
-new liquidity provider LP balance: 4999 (?)
-new liquidity provider base token exit: 3333 (put in 0)
+new liquidity provider LP balance: 4999 
+old liquidity provider LP balance: (before removing liquidity 10000
+new liquidity provider base token exit: 3333 
 new liquidity provider quoteToken exit: 3333 (put in 5000)
-old liquidity provider LP balance: 10000
-old liquidity provider base token exit: 6667 (they put in 10000) 3333 less base tokens
-old liquidity provider quoteToken exit: 6667 (they put in 10000) 3333 less quote Tokens
+old liquidity provider base token exit: 6667  
+old liquidity provider quoteToken exit: 6667 (they put in 10000) 
+(here LP#1 puts in 20k comes out with overall 13,334k)
 exchange quote bal: 0
 exchange base bal: 0
+
 - After rebase, after lp2 contributes - Sigma = 5000 + 5000 / (10000) = 1
 - After lp2 withdraw Sigma should be unchanged = 6667/6667 = 1
 - 3333 base token: 3333 quote token  3333 / 1 = 3333 : 0 tokens too many.
+
+* With the C4 solution of calculating gamma, the stats would be (mathematically):
+gamma = 0.4 (as comapred to 0.3333333333333333)
+Ro(for the new LP) = ~6666( as compared to 4999) 
+
+
+
+### Using calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay function
+previous LP way: (using only the rebase up solution from c4)  4999
+new LP way: (using the rebase down solution from c4)  3333
+
+new liquidity provider LP balance: 3333
+old liquidity provider LP balance: (before removing liquidity): 10000
+new liquidity provider base token exit: 2500
+new liquidity provider quoteToken exit: 2500 (put in 5000)
+old liquidity provider base token exit: 7500 (put in 10k - expereienced rebase down 5k)
+old liquidity provider quoteToken exit: 7500 (put in 10k)
+(here LP#1 puts in 20k comes out with overall 15k)
+exchange quote bal: 0
+exchange base bal: 0
+- Sigma (pre rebase) = 10000 / 10000
+- Sigma post rebase = 5000  / 10000 = 0.5
+- Sigma post rebase and LP 2 comes = 5000 + 5000 / 10000 = 1
+- sigma after LP2 exits = 10000 - 2500 / 10000 - 2500 = 7500 / 7500 = 1 

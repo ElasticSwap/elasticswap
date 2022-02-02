@@ -2146,7 +2146,7 @@ describe("Exchange", () => {
       );
     });
 
-    it("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
+    it.only("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
       // create expiration 50 minutes from now.
       const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
       const liquidityProvider = accounts[1];
@@ -2233,10 +2233,6 @@ describe("Exchange", () => {
         liquidityProvider2.address,
         expiration
       );
-      console.log(
-        "new liquidity provider balance:",
-        (await baseToken.balanceOf(cleanAddress2)).toString()
-      );
 
       console.log(
         "new liquidity provider LP balance:",
@@ -2269,6 +2265,10 @@ describe("Exchange", () => {
         liquidityProviderquoteTokenExpectedBalance
       );
 
+      console.log(
+        "old liquidity provider LP balance: (before removing liquidity",
+        (await exchange.balanceOf(liquidityProvider.address)).toString()
+      );
       await exchange
         .connect(liquidityProvider)
         .removeLiquidity(
@@ -2309,11 +2309,6 @@ describe("Exchange", () => {
       console.log(
         "new liquidity provider quoteToken exit:",
         (await quoteToken.balanceOf(cleanAddress3)).toString()
-      );
-
-      console.log(
-        "old liquidity provider LP balance:",
-        (await exchange.balanceOf(liquidityProvider.address)).toString()
       );
 
       console.log(

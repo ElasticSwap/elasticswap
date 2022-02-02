@@ -230,6 +230,66 @@ library MathLib {
             WAD;
     }
 
+     /**
+     * @dev used to calculate the qty of liquidity tokens (deltaRo) we will be issued to a supplier
+     * of a single asset entry when decay is present.
+     * @param _baseTokenReserveBalance the total balance (external) of base tokens in our pool (Alpha)
+     * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
+     * @param _tokenQtyAToAdd the amount of tokens being added by the caller to remove the current decay
+     * @param _internalTokenAReserveQty the internal balance (X or Y) of token A as a result of this transaction
+     * @param _tokenBDecayChange the change that will occur in the decay in the opposite token as a result of
+     * this transaction
+     * @param _tokenBDecay the amount of decay in tokenB
+     * @param _omega - ratio of internal balances of baseToken and quoteToken: baseToken/quoteToken
+     * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
+     */
+    function calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay(
+        uint256 _baseTokenReserveBalance,
+        uint256 _totalSupplyOfLiquidityTokens,
+        uint256 _tokenQtyAToAdd,
+        uint256 _internalTokenAReserveQty,
+        uint256 _tokenBDecayChange,
+        uint256 _tokenBDecay,
+        uint256 _omega
+    ) public view returns (uint256 liquidityTokenQty) {
+        console.log("solidity lib: calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay");
+        console.log("_baseTokenReserveBalance: ", _baseTokenReserveBalance);
+        console.log("_totalSupplyOfLiquidityTokens: ", _totalSupplyOfLiquidityTokens);
+        console.log("_tokenQtyAToAdd: ", _tokenQtyAToAdd);
+        console.log("_internalTokenAReserveQty: ", _internalTokenAReserveQty);
+        console.log("_tokenBDecayChange: ", _tokenBDecayChange);
+        console.log("_tokenBDecay: ", _tokenBDecay);
+        console.log("_omega: ", _omega);
+
+
+
+        // new gamma: 
+        /**
+        
+               ΔX
+      = -------------------  /
+         X + (Alpha + ΔX)
+
+
+
+         */
+
+        uint256 denominator = _internalTokenAReserveQty + _baseTokenReserveBalance + _tokenQtyAToAdd;
+        console.log("denominator: ", denominator);
+
+        uint256 wGamma =  wDiv(
+            _tokenQtyAToAdd, denominator
+        );
+           
+        console.log("wGamma: ", wGamma);
+        liquidityTokenQty =
+            wDiv(
+                wMul(_totalSupplyOfLiquidityTokens * WAD, wGamma),
+                WAD - wGamma
+            ) /
+            WAD;
+    }
+
     /**
      * @dev used to calculate the qty of liquidity tokens (deltaRo) we will be issued to a supplier
      * of a single asset entry when decay is present.
@@ -397,6 +457,7 @@ library MathLib {
                 _internalBalances.quoteTokenReserveQty
             );
         // calculate the number of liquidity tokens to return to user using:
+        
         liquidityTokenQty = calculateLiquidityTokenQtyForSingleAssetEntry(
             _baseTokenReserveQty,
             _totalSupplyOfLiquidityTokens,
@@ -406,6 +467,18 @@ library MathLib {
             quoteTokenDecay,
             wInternalBaseTokenToQuoteTokenRatio
         );
+        uint256 altLiquidityTokenQty = calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay(
+            _baseTokenReserveQty,
+            _totalSupplyOfLiquidityTokens,
+            baseTokenQty,
+            _internalBalances.baseTokenReserveQty,
+            quoteTokenQtyDecayChange,
+            quoteTokenDecay,
+            wInternalBaseTokenToQuoteTokenRatio
+        );
+
+        console.log("previous LP way: (using only the rebase up solution from c4) ", liquidityTokenQty);
+        console.log("new LP way: (using the rebase down solution from c4) ", altLiquidityTokenQty);
         return (baseTokenQty, liquidityTokenQty);
     }
 
