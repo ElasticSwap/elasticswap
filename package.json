@@ -49,6 +49,7 @@
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@openzeppelin/contracts": "^4.1.0",
+    "bignumber.js": "^9.0.2",
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-deploy": "^0.8.6",
     "hardhat-gas-reporter": "^1.0.4"

@@ -1,5 +1,8 @@
 const { expect } = require("chai");
 const { ethers, deployments } = require("hardhat");
+const { BigNumber } = require("bignumber.js");
+
+const { ROUND_DOWN } = BigNumber;
 
 const WAD = ethers.BigNumber.from(10).pow(18);
 
@@ -218,7 +221,7 @@ describe("MathLib", () => {
       ).to.equal(expectLiquidityTokens2);
     });
 
-    it("Should return the correct qty of liquidity tokens with a rebase up", async () => {
+    it.only("Should return the correct qty of liquidity tokens with a rebase up", async () => {
       // Scenario: We have 1000:5000 A:B or X:Y, a rebase up occurs (of 500 tokens)
       // and a user needs to add 2500 quote tokens(deltaY: 2500 = 500 / (1000/5000)) to remove the base decay
       const totalSupplyOfLiquidityTokens = 5000;
@@ -226,10 +229,6 @@ describe("MathLib", () => {
       const tokenAInternalReserveQtyAfterTransaction = 7500; // 5000 + 2500 to offset rebase up
       const tokenBDecayChange = 500;
       const tokenBDecay = 500;
-
-      // const gamma =
-      //   (tokenAQtyToAdd / tokenAInternalReserveQtyAfterTransaction / 2) *
-      //   (tokenBDecayChange / tokenBDecay);
 
       // omega = X/Y
       const omega = 1000 / 5000;
@@ -294,16 +293,21 @@ describe("MathLib", () => {
       const denominator2 = ratio + tokenAInternalReserveQtyAfterTransaction2;
       console.log("denominator2", denominator2);
 
-      const altGamma2 = tokenAQtyToAdd2 / denominator2;
-      console.log("altGamma2: ", altGamma2);
+      const altGamma2BN = BigNumber(tokenAQtyToAdd2)
+        .dividedBy(BigNumber(denominator2))
+        .dp(18);
+      console.log(altGamma2BN.toString());
 
-      // const gamma2 =
-      //   (tokenAQtyToAdd2 / tokenAInternalReserveQtyAfterTransaction2 / 2) *
-      //   (tokenBDecayChange2 / tokenBDecay);
+      const expectLiquidityTokens2BN = BigNumber(totalSupplyOfLiquidityTokens)
+        .multipliedBy(altGamma2BN)
+        .dividedBy(BigNumber(1).minus(altGamma2BN))
+        .dp(0, ROUND_DOWN);
 
-      const expectLiquidityTokens2 = Math.floor(
-        (totalSupplyOfLiquidityTokens * altGamma2) / (1 - altGamma2)
+      console.log(
+        "expectLiquidityTokens2BN: ",
+        expectLiquidityTokens2BN.toString()
       );
+
       const calculatedLiquidityTokenQtyForSingleAssetEntry2 =
         await mathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
           1500,
@@ -319,9 +323,9 @@ describe("MathLib", () => {
         calculatedLiquidityTokenQtyForSingleAssetEntry2.toString()
       );
 
-      expect(calculatedLiquidityTokenQtyForSingleAssetEntry2).to.equal(
-        expectLiquidityTokens2
-      );
+      expect(
+        calculatedLiquidityTokenQtyForSingleAssetEntry2.toString()
+      ).to.equal(expectLiquidityTokens2BN.toString());
     });
   });
 
