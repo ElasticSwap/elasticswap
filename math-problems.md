@@ -126,3 +126,40 @@ exchange base bal: 0
 - Sigma post rebase = 5000  / 10000 = 0.5
 - Sigma post rebase and LP 2 comes = 5000 + 5000 / 10000 = 1
 - sigma after LP2 exits = 10000 - 2500 / 10000 - 2500 = 7500 / 7500 = 1 
+
+### Test | Rebase down -> SAE + DAE  -> exit  
+LP #1 sets the pool with 10k baseTokens, 10k quoteToken, hence 10k Ro for LP1
+Omega = 1
+Rebase down of 5k happens
+X = 10,000
+Alpha = 5000
+Y = 10,000
+Beta = 10,000
+Ro = 10,000 (all LP#1 owned )
+
+LP#2 comes along and wants to do SAE+DAE
+baseTokenAmountProvided = ((iOmega)*5000 + 10000
+                        = 15,000
+quoteTokenAmount provided = 10k
+
+LP token LP#2 recieves:
+For SAE: (5000 baseTokens) -> 3333 LP tokens
+  At this stage: X, Y, Alpha, Beta = 10k
+Now DAE (10k basetokens + 10k quoteTokens) => (10000/10000) * 13333  = 13333 LP tokens
+Hence, the LP#2 gets = 3333 + 13333 = 16666 tokens
+State of the pool: 
+X: 20k
+Alpha: 20k
+Y: 20k
+Beta 20k
+LP outstanding = 26666 (10,000 -> LP#1, 16666 -> LP#2)
+
+LP#1 exits their LP position:
+Basetokens recieved = (10000/26666) * 20000 = ~7500.18750468761719 (had put in 10k)
+quoteToken recieved = (10000/26666) * 20000 = ~7500.18750468761719 (had put in 10k)
+
+State of the pool: 
+X, Alpha, Beta, Y: ~12500
+LP#2 exits their LP position:
+BaseToken receieved = 16666 / 16666 * 12500 = ~12500 (had put in 15k)
+QuoteToken receieved = 16666 / 16666 * 12500 = ~12500 (had put in 10k)

@@ -477,9 +477,8 @@ library MathLib {
             wInternalBaseTokenToQuoteTokenRatio
         );
 
-        console.log("previous LP way: (using only the rebase up solution from c4) ", liquidityTokenQty);
         console.log("new LP way: (using the rebase down solution from c4) ", altLiquidityTokenQty);
-        return (baseTokenQty, liquidityTokenQty);
+        return (baseTokenQty, altLiquidityTokenQty);
     }
 
     /**
@@ -700,6 +699,7 @@ library MathLib {
             quoteTokenQty,
             _quoteTokenReserveQty
         );
+        console.log("solidity: DAE", liquidityTokenQty);
 
         _internalBalances.baseTokenReserveQty += baseTokenQty;
         _internalBalances.quoteTokenReserveQty += quoteTokenQty;

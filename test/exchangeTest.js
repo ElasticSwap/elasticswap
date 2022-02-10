@@ -2372,7 +2372,7 @@ describe("Exchange", () => {
         .approve(exchange.address, liquidityProviderInitialBalances);
 
       const baseTokenLiquidityToAdd = 10000;
-      const quoteTokenLiquidityToAdd = 50000;
+      const quoteTokenLiquidityToAdd = 10000;
 
       await exchange.connect(liquidityProvider).addLiquidity(
         baseTokenLiquidityToAdd, // base token
@@ -2384,7 +2384,7 @@ describe("Exchange", () => {
       );
 
       // simulate a rebase down by sending tokens from our exchange contract away.
-      const baseTokenrebaseDownAmount = 2000;
+      const baseTokenrebaseDownAmount = 5000;
       await baseToken.simulateRebaseDown(
         exchange.address,
         baseTokenrebaseDownAmount
@@ -2408,15 +2408,15 @@ describe("Exchange", () => {
       // we should be able to now add base tokens in order to offset the base tokens
       // that have been "removed" during the rebase down.
       // and we should also be able to add additional tokens in the correct ratio.
-      // if we are adding 10 base tokens, we need to add 50 quote tokens since
-      // the current ratio is 1/5.
+      // if we are adding 10 base tokens, we need to add 10 quote tokens since
+      // the current ratio is 1/1.
       await exchange
         .connect(liquidityProvider2)
         .addLiquidity(
           baseTokenrebaseDownAmount + 10000,
-          50000,
+          10000,
           baseTokenrebaseDownAmount + 10000,
-          50000,
+          10000,
           liquidityProvider2.address,
           expiration
         );
@@ -2432,12 +2432,12 @@ describe("Exchange", () => {
       );
 
       expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
-        quoteTokenLiquidityToAdd + 50000
+        quoteTokenLiquidityToAdd + 10000
       );
       expect(await quoteToken.balanceOf(exchange.address)).to.equal(
-        quoteTokenLiquidityToAdd + 50000
+        quoteTokenLiquidityToAdd + 10000
       );
-
+      console.log("check");
       // confirm original LP can get correct amounts back.
       const liquidityProviderbaseTokenExpectedBalance =
         liquidityProviderInitialBalances - baseTokenLiquidityToAdd;
@@ -2451,22 +2451,6 @@ describe("Exchange", () => {
         liquidityProviderquoteTokenExpectedBalance
       );
 
-      /**
-       * some general sanity check math.
-       * Token A = 10; 100$ -> Token A is worth 10$
-       * Token B = 50; 100$ -> Token B is worth 2$
-       * LP1 provided 200$ worth receives 50 LP tokens
-       *
-       * LP2 provides 2 Token A -> $20 worth or 1/10th of LP1 receives 5 LP tokens
-       *
-       * LP1 gets back 9 A and 45 B tokens (90+90 = 180$) - experienced a 20% rebase down on half of his position
-       * LP2 gets back 1 A and 5 B tokens (10+10 = 20$) - contributed post rebase.
-       *
-       * This difference is due to the rebase. LP1 experienced the initial rebase while LP2 contributed post rebase.
-       *
-       */
-
-      // this should distribute 9 base tokens and 45 quote tokens back to our liquidity provider
       await exchange
         .connect(liquidityProvider)
         .removeLiquidity(
@@ -2479,18 +2463,19 @@ describe("Exchange", () => {
 
       // confirm LP1 has expected balance
       expect(await baseToken.balanceOf(liquidityProvider.address)).to.equal(
-        liquidityProviderbaseTokenExpectedBalance + 9000
+        liquidityProviderbaseTokenExpectedBalance + 7500
       );
       expect(await quoteToken.balanceOf(liquidityProvider.address)).to.equal(
-        liquidityProviderquoteTokenExpectedBalance + 45000
+        liquidityProviderquoteTokenExpectedBalance + 7500
       );
 
       // confirm second LP can get an equivalent amount of both assets back (they only gave 1 asset)
       const liquidityProvider2baseTokenExpectedBalance =
         liquidityProviderInitialBalances - baseTokenrebaseDownAmount - 10000;
       const liquidityProvider2quoteTokenExpectedBalance =
-        liquidityProviderInitialBalances - 50000;
+        liquidityProviderInitialBalances - 10000;
 
+      // before remoing liqudidty
       expect(await baseToken.balanceOf(liquidityProvider2.address)).to.equal(
         liquidityProvider2baseTokenExpectedBalance
       );
@@ -2511,10 +2496,10 @@ describe("Exchange", () => {
         );
 
       expect(await baseToken.balanceOf(liquidityProvider2.address)).to.equal(
-        liquidityProvider2baseTokenExpectedBalance + 1000 + 10000
+        liquidityProvider2baseTokenExpectedBalance + 12500
       );
       expect(await quoteToken.balanceOf(liquidityProvider2.address)).to.equal(
-        liquidityProvider2quoteTokenExpectedBalance + 5000 + 50000
+        liquidityProvider2quoteTokenExpectedBalance + 12500
       );
 
       // confirm the exchange has no balances, and that a new LP could add balances
