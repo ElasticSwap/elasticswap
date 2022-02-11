@@ -1888,16 +1888,6 @@ describe("Exchange", () => {
       //   (await exchange.internalBalances()).baseTokenReserveQty;
       // expect(baseTokenDecay).to.equal(0);
 
-      console.log(
-        "new liquidity provider balance:",
-        (await baseToken.balanceOf(cleanAddress2)).toString()
-      );
-
-      console.log(
-        "new liquidity provider LP balance:",
-        (await exchange.balanceOf(liquidityProvider2.address)).toString()
-      );
-
       await exchange
         .connect(liquidityProvider2)
         .removeLiquidity(
@@ -1908,22 +1898,8 @@ describe("Exchange", () => {
           expiration
         );
 
-      console.log(
-        "new liquidity provider base token exit:",
-        (await baseToken.balanceOf(cleanAddress2)).toString()
-      );
-      console.log(
-        "new liquidity provider quoteToken exit:",
-        (await quoteToken.balanceOf(cleanAddress2)).toString()
-      );
-
       // expect(await baseToken.balanceOf(cleanAddress2)).to.equal(17776);
       // expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(8888);
-
-      console.log(
-        "old liquidity provider LP balance:",
-        (await exchange.balanceOf(liquidityProvider.address)).toString()
-      );
 
       await exchange
         .connect(liquidityProvider)
@@ -1934,25 +1910,6 @@ describe("Exchange", () => {
           cleanAddress3,
           expiration
         );
-
-      console.log(
-        "old liquidity provider base token exit:",
-        (await baseToken.balanceOf(cleanAddress3)).toString()
-      );
-      console.log(
-        "old liquidity provider quoteToken exit:",
-        (await quoteToken.balanceOf(cleanAddress3)).toString()
-      );
-
-      console.log(
-        "exchange quote bal:",
-        (await quoteToken.balanceOf(exchange.address)).toString()
-      );
-
-      console.log(
-        "exchange base bal:",
-        (await baseToken.balanceOf(exchange.address)).toString()
-      );
     });
 
     it("Should allow for adding quote and base token liquidity after a rebase up has occurred, and correct withdraw of re-based qty", async () => {
@@ -2234,11 +2191,6 @@ describe("Exchange", () => {
         expiration
       );
 
-      console.log(
-        "new liquidity provider LP balance:",
-        (await exchange.balanceOf(liquidityProvider2.address)).toString()
-      );
-
       // confirm lp2 has less base tokens
       expect(await baseToken.balanceOf(liquidityProvider2.address)).to.equal(
         liquidityProviderInitialBalances - baseTokenrebaseDownAmount
@@ -2265,10 +2217,6 @@ describe("Exchange", () => {
         liquidityProviderquoteTokenExpectedBalance
       );
 
-      console.log(
-        "old liquidity provider LP balance: (before removing liquidity",
-        (await exchange.balanceOf(liquidityProvider.address)).toString()
-      );
       await exchange
         .connect(liquidityProvider)
         .removeLiquidity(
@@ -2301,33 +2249,6 @@ describe("Exchange", () => {
           cleanAddress3,
           expiration
         );
-
-      console.log(
-        "new liquidity provider base token exit:",
-        (await baseToken.balanceOf(cleanAddress3)).toString()
-      );
-      console.log(
-        "new liquidity provider quoteToken exit:",
-        (await quoteToken.balanceOf(cleanAddress3)).toString()
-      );
-
-      console.log(
-        "old liquidity provider base token exit:",
-        (await baseToken.balanceOf(cleanAddress2)).toString()
-      );
-      console.log(
-        "old liquidity provider quoteToken exit:",
-        (await quoteToken.balanceOf(cleanAddress2)).toString()
-      );
-      console.log(
-        "exchange quote bal:",
-        (await quoteToken.balanceOf(exchange.address)).toString()
-      );
-
-      console.log(
-        "exchange base bal:",
-        (await baseToken.balanceOf(exchange.address)).toString()
-      );
     });
 
     it("Should allow for adding quote and base token liquidity after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
@@ -2437,7 +2358,6 @@ describe("Exchange", () => {
       expect(await quoteToken.balanceOf(exchange.address)).to.equal(
         quoteTokenLiquidityToAdd + 10000
       );
-      console.log("check");
       // confirm original LP can get correct amounts back.
       const liquidityProviderbaseTokenExpectedBalance =
         liquidityProviderInitialBalances - baseTokenLiquidityToAdd;

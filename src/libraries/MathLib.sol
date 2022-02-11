@@ -174,14 +174,6 @@ library MathLib {
         uint256 _tokenBDecay,
         uint256 _omega
     ) public view returns (uint256 liquidityTokenQty) {
-        console.log("solidity lib:");
-        console.log("_baseTokenReserveBalance: ", _baseTokenReserveBalance);
-        console.log("_totalSupplyOfLiquidityTokens: ", _totalSupplyOfLiquidityTokens);
-        console.log("_tokenQtyAToAdd: ", _tokenQtyAToAdd);
-        console.log("_internalTokenAReserveQty: ", _internalTokenAReserveQty);
-        console.log("_tokenBDecayChange: ", _tokenBDecayChange);
-        console.log("_tokenBDecay: ", _tokenBDecay);
-        console.log("_omega: ", _omega);
 
         /**
         gamma = deltaY / Y' / 2 * (deltaX / alphaDecay')
@@ -214,14 +206,14 @@ library MathLib {
 
         // uint256 wOmega = wDiv(_internalTokenBReserveQty, _internalTokenAReserveQty);
         uint256 wRatio = wDiv(_baseTokenReserveBalance, _omega);
-        console.log("wRatio: ", wRatio);
         uint256 denominator = wRatio + _internalTokenAReserveQty;
-        console.log("denominator: ", denominator);
         uint256 wGamma =  wDiv(
             _tokenQtyAToAdd, denominator
         );
            
         console.log("wGamma: ", wGamma);
+        console.log("liquidityTokenQty: ", liquidityTokenQty);
+
         liquidityTokenQty =
             wDiv(
                 wMul(_totalSupplyOfLiquidityTokens * WAD, wGamma),
@@ -252,36 +244,23 @@ library MathLib {
         uint256 _tokenBDecay,
         uint256 _omega
     ) public view returns (uint256 liquidityTokenQty) {
-        console.log("solidity lib: calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay");
-        console.log("_baseTokenReserveBalance: ", _baseTokenReserveBalance);
-        console.log("_totalSupplyOfLiquidityTokens: ", _totalSupplyOfLiquidityTokens);
-        console.log("_tokenQtyAToAdd: ", _tokenQtyAToAdd);
-        console.log("_internalTokenAReserveQty: ", _internalTokenAReserveQty);
-        console.log("_tokenBDecayChange: ", _tokenBDecayChange);
-        console.log("_tokenBDecay: ", _tokenBDecay);
-        console.log("_omega: ", _omega);
-
-
 
         // new gamma: 
         /**
         
                ΔX
-      = -------------------  /
+      = -------------------  / (denominator may be Alpha' instead of X)
          X + (Alpha + ΔX)
-
-
 
          */
 
         uint256 denominator = _internalTokenAReserveQty + _baseTokenReserveBalance + _tokenQtyAToAdd;
-        console.log("denominator: ", denominator);
-
         uint256 wGamma =  wDiv(
             _tokenQtyAToAdd, denominator
         );
            
         console.log("wGamma: ", wGamma);
+        console.log("liquidityTokenQty: ", liquidityTokenQty);
         liquidityTokenQty =
             wDiv(
                 wMul(_totalSupplyOfLiquidityTokens * WAD, wGamma),
