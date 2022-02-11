@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 @notice DO NOT USE IN PRODUCTION. FOR TEST PURPOSES ONLY
  */
 contract ElasticMock is ERC20PresetFixedSupply, Ownable {
-
     constructor(
         string memory name,
         string memory symbol,
