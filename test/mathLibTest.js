@@ -180,11 +180,6 @@ describe("MathLib", () => {
       const totalSupplyOfLiquidityTokens = 5000;
       const tokenAQtyToAdd = 50;
       const tokenAInternalReserveQtyAfterTransaction = 1000; // 950 + 50 brining us back to original state.
-      const tokenBDecayChange = 250;
-      const tokenBDecay = 250;
-
-      // omega = X/Y
-      const omega = await mathLib.wDiv(1000, 5000);
 
       const gamma =
         tokenAQtyToAdd /
@@ -198,17 +193,13 @@ describe("MathLib", () => {
           950,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd,
-          tokenAInternalReserveQtyAfterTransaction,
-          tokenBDecayChange,
-          tokenBDecay,
-          omega
+          tokenAInternalReserveQtyAfterTransaction
         )
       ).to.equal(expectLiquidityTokens);
 
       // if we supply half, and remove half the decay, we should get roughly 1/2 the tokens
       const tokenAQtyToAdd2 = 25;
       const tokenAInternalReserveQtyAfterTransaction2 = 975; // 950 + 25 brining us back to original state.
-      const tokenBDecayChange2 = 125;
       const gamma2 =
         tokenAQtyToAdd2 /
         (tokenAInternalReserveQtyAfterTransaction2 + 950 + tokenAQtyToAdd2);
@@ -222,10 +213,7 @@ describe("MathLib", () => {
           950,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd2,
-          tokenAInternalReserveQtyAfterTransaction2,
-          tokenBDecayChange2,
-          tokenBDecay,
-          omega
+          tokenAInternalReserveQtyAfterTransaction2
         )
       ).to.equal(expectLiquidityTokens2);
 
@@ -239,8 +227,6 @@ describe("MathLib", () => {
       const totalSupplyOfLiquidityTokens = 5000;
       const tokenAQtyToAdd = 2500;
       const tokenAInternalReserveQtyAfterTransaction = 7500; // 5000 + 2500 to offset rebase up
-      const tokenBDecayChange = 500;
-      const tokenBDecay = 500;
 
       // omega = X/Y
       const omega = 1000 / 5000;
@@ -265,8 +251,6 @@ describe("MathLib", () => {
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd,
           tokenAInternalReserveQtyAfterTransaction,
-          tokenBDecayChange,
-          tokenBDecay,
           await mathLib.wDiv(1000, 5000)
         );
 
@@ -277,7 +261,6 @@ describe("MathLib", () => {
       // if we supply half, and remove half the decay, we should get roughly 1/2 the tokens
       const tokenAQtyToAdd2 = 1250;
       const tokenAInternalReserveQtyAfterTransaction2 = 6250;
-      const tokenBDecayChange2 = 250;
 
       // denominator = ratio + internalTokenAReserveQty
       // internalTokenAReserveQty: the internal balance (X or Y) of token A as a result of this transaction
@@ -298,8 +281,6 @@ describe("MathLib", () => {
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd2,
           tokenAInternalReserveQtyAfterTransaction2,
-          tokenBDecayChange2,
-          tokenBDecay,
           await mathLib.wDiv(1000, 5000)
         );
 

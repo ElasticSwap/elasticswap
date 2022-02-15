@@ -2,7 +2,6 @@
 pragma solidity 0.8.4;
 
 import "../contracts/Exchange.sol";
-import "hardhat/console.sol";
 
 /**
  * @title MathLib
@@ -159,9 +158,6 @@ library MathLib {
      * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
      * @param _tokenQtyAToAdd the amount of tokens being added by the caller to remove the current decay
      * @param _internalTokenAReserveQty the internal balance (X or Y) of token A as a result of this transaction
-     * @param _tokenBDecayChange the change that will occur in the decay in the opposite token as a result of
-     * this transaction
-     * @param _tokenBDecay the amount of decay in tokenB
      * @param _omega - ratio of internal balances of baseToken and quoteToken: baseToken/quoteToken
      * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
      */
@@ -170,10 +166,8 @@ library MathLib {
         uint256 _totalSupplyOfLiquidityTokens,
         uint256 _tokenQtyAToAdd,
         uint256 _internalTokenAReserveQty,
-        uint256 _tokenBDecayChange,
-        uint256 _tokenBDecay,
         uint256 _omega
-    ) public view returns (uint256 liquidityTokenQty) {
+    ) public pure returns (uint256 liquidityTokenQty) {
         /**
         gamma = deltaY / Y' / 2 * (deltaX / alphaDecay')
 
@@ -208,9 +202,6 @@ library MathLib {
         uint256 denominator = wRatio + _internalTokenAReserveQty;
         uint256 wGamma = wDiv(_tokenQtyAToAdd, denominator);
 
-        console.log("wGamma: ", wGamma);
-        console.log("liquidityTokenQty: ", liquidityTokenQty);
-
         liquidityTokenQty =
             wDiv(
                 wMul(_totalSupplyOfLiquidityTokens * WAD, wGamma),
@@ -226,21 +217,14 @@ library MathLib {
      * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
      * @param _tokenQtyAToAdd the amount of tokens being added by the caller to remove the current decay
      * @param _internalTokenAReserveQty the internal balance (X or Y) of token A as a result of this transaction
-     * @param _tokenBDecayChange the change that will occur in the decay in the opposite token as a result of
-     * this transaction
-     * @param _tokenBDecay the amount of decay in tokenB
-     * @param _omega - ratio of internal balances of baseToken and quoteToken: baseToken/quoteToken
      * @return liquidityTokenQty qty of liquidity tokens to be issued in exchange
      */
     function calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay(
         uint256 _baseTokenReserveBalance,
         uint256 _totalSupplyOfLiquidityTokens,
         uint256 _tokenQtyAToAdd,
-        uint256 _internalTokenAReserveQty,
-        uint256 _tokenBDecayChange,
-        uint256 _tokenBDecay,
-        uint256 _omega
-    ) public view returns (uint256 liquidityTokenQty) {
+        uint256 _internalTokenAReserveQty
+    ) public pure returns (uint256 liquidityTokenQty) {
         // new gamma:
         /**
         
@@ -256,8 +240,6 @@ library MathLib {
                 _tokenQtyAToAdd;
         uint256 wGamma = wDiv(_tokenQtyAToAdd, denominator);
 
-        console.log("wGamma: ", wGamma);
-        console.log("liquidityTokenQty: ", liquidityTokenQty);
         liquidityTokenQty =
             wDiv(
                 wMul(_totalSupplyOfLiquidityTokens * WAD, wGamma),
@@ -351,8 +333,6 @@ library MathLib {
             _totalSupplyOfLiquidityTokens,
             quoteTokenQty,
             _internalBalances.quoteTokenReserveQty,
-            baseTokenQtyDecayChange,
-            baseTokenDecay,
             wInternalBaseTokenToQuoteTokenRatio
         );
         return (quoteTokenQty, liquidityTokenQty);
@@ -376,7 +356,7 @@ library MathLib {
         uint256 _baseTokenReserveQty,
         uint256 _totalSupplyOfLiquidityTokens,
         InternalBalances memory _internalBalances
-    ) public view returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
+    ) public pure returns (uint256 baseTokenQty, uint256 liquidityTokenQty) {
         uint256 maxBaseTokenQty =
             _internalBalances.baseTokenReserveQty - _baseTokenReserveQty;
         require(
@@ -427,38 +407,14 @@ library MathLib {
         // quoteTokenReserveQty += quoteTokenQtyDecayChange;
         // baseTokenReserveQty += baseTokenQty;
 
-        uint256 wInternalBaseTokenToQuoteTokenRatio =
-            wDiv(
-                _internalBalances.baseTokenReserveQty,
-                _internalBalances.quoteTokenReserveQty
-            );
-        // calculate the number of liquidity tokens to return to user using:
-
-        liquidityTokenQty = calculateLiquidityTokenQtyForSingleAssetEntry(
-            _baseTokenReserveQty,
-            _totalSupplyOfLiquidityTokens,
-            baseTokenQty,
-            _internalBalances.baseTokenReserveQty,
-            quoteTokenQtyDecayChange,
-            quoteTokenDecay,
-            wInternalBaseTokenToQuoteTokenRatio
-        );
-        uint256 altLiquidityTokenQty =
+        // calculate the number of liquidity tokens to return to user using:        
+        liquidityTokenQty =
             calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay(
                 _baseTokenReserveQty,
                 _totalSupplyOfLiquidityTokens,
                 baseTokenQty,
-                _internalBalances.baseTokenReserveQty,
-                quoteTokenQtyDecayChange,
-                quoteTokenDecay,
-                wInternalBaseTokenToQuoteTokenRatio
+                _internalBalances.baseTokenReserveQty
             );
-
-        console.log(
-            "new LP way: (using the rebase down solution from c4) ",
-            altLiquidityTokenQty
-        );
-        return (baseTokenQty, altLiquidityTokenQty);
     }
 
     /**
@@ -679,7 +635,6 @@ library MathLib {
             quoteTokenQty,
             _quoteTokenReserveQty
         );
-        console.log("solidity: DAE", liquidityTokenQty);
 
         _internalBalances.baseTokenReserveQty += baseTokenQty;
         _internalBalances.quoteTokenReserveQty += quoteTokenQty;
