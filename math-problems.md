@@ -109,7 +109,7 @@ Ro(for the new LP) = ~6666( as compared to 4999)
 
 
 
-### Using calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay function
+### Using calculateLiquidityTokenQtyForSingleAssetEntryWithQuoteTokenDecay function
 previous LP way: (using only the rebase up solution from c4)  4999
 new LP way: (using the rebase down solution from c4)  3333
 

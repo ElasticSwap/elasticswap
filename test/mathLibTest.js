@@ -173,7 +173,7 @@ describe("MathLib", () => {
     });
   });
 
-  describe("calculateLiquidityTokenQtyForSingleAssetEntry", () => {
+  describe("calculateLiquidityTokenQtyForSingleAssetEntryWithBaseTokenDecay", () => {
     it("Should return the correct qty of liquidity tokens with a rebase down", async () => {
       // Scenario: We have 1000:5000 A:B or X:Y, a rebase down occurs (of 50 tokens)
       // and a user needs to 50 tokens in order to remove the decay
@@ -189,7 +189,7 @@ describe("MathLib", () => {
       );
 
       expect(
-        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay(
+        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntryWithQuoteTokenDecay(
           950,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd,
@@ -209,7 +209,7 @@ describe("MathLib", () => {
       );
 
       expect(
-        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntryForQuoteTokenDecay(
+        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntryWithQuoteTokenDecay(
           950,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd2,
@@ -246,7 +246,7 @@ describe("MathLib", () => {
       );
 
       const calculatedLiquidityTokenQtyForSingleAssetEntry =
-        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntryWithBaseTokenDecay(
           1500,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd,
@@ -276,7 +276,7 @@ describe("MathLib", () => {
         .dp(0, ROUND_DOWN);
 
       const calculatedLiquidityTokenQtyForSingleAssetEntry2 =
-        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntry(
+        await mathLib.calculateLiquidityTokenQtyForSingleAssetEntryWithBaseTokenDecay(
           1500,
           totalSupplyOfLiquidityTokens,
           tokenAQtyToAdd2,
