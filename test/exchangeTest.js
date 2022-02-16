@@ -2488,6 +2488,181 @@ describe("Exchange", () => {
       );
     });
 
+    only("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty with decay still present", async () => {
+      // create expiration 50 minutes from now.
+      const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
+      const liquidityProvider = accounts[1];
+      const liquidityProvider2 = accounts[2];
+      const cleanAddress1 = accounts[3].address;
+      const cleanAddress2 = accounts[4].address;
+
+      // send users (liquidity provider) base and quote tokens for easy accounting.
+      const liquidityProviderInitialBalances = 1000000;
+      await baseToken.transfer(
+        liquidityProvider.address,
+        liquidityProviderInitialBalances
+      );
+      await quoteToken.transfer(
+        liquidityProvider.address,
+        liquidityProviderInitialBalances
+      );
+      // lp2 only needs base tokens for single asset entry.
+      await baseToken.transfer(
+        liquidityProvider2.address,
+        liquidityProviderInitialBalances
+      );
+
+      // add approvals
+      await quoteToken
+        .connect(liquidityProvider)
+        .approve(exchange.address, liquidityProviderInitialBalances);
+      await baseToken
+        .connect(liquidityProvider)
+        .approve(exchange.address, liquidityProviderInitialBalances);
+      await baseToken
+        .connect(liquidityProvider2)
+        .approve(exchange.address, liquidityProviderInitialBalances);
+
+      const baseTokenLiquidityToAdd = 10000;
+      const quoteTokenLiquidityToAdd = 50000;
+
+      await exchange.connect(liquidityProvider).addLiquidity(
+        baseTokenLiquidityToAdd, // base token
+        quoteTokenLiquidityToAdd, // quote token
+        1,
+        1,
+        liquidityProvider.address,
+        expiration
+      );
+
+      // simulate a rebase down by sending tokens from our exchange contract away.
+      const baseTokenRebaseDownAmount = 2000;
+      await baseToken.simulateRebaseDown(
+        exchange.address,
+        baseTokenRebaseDownAmount
+      );
+
+      // this means we should have baseTokenLiquidityToAdd - baseTokenrebaseDownAmount
+      // remaining in exchange, confirm this
+      expect(await baseToken.balanceOf(exchange.address)).to.equal(
+        baseTokenLiquidityToAdd - baseTokenRebaseDownAmount
+      );
+
+      // confirm internal accounting is unchanged.
+      expect((await exchange.internalBalances()).baseTokenReserveQty).to.equal(
+        baseTokenLiquidityToAdd
+      );
+      expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+        quoteTokenLiquidityToAdd
+      );
+
+      // confirm the "decay" is equal to the re-based amount times the previous iOmega (B/A). (this is betaDecay)
+      const iOmega = quoteTokenLiquidityToAdd / baseTokenLiquidityToAdd;
+      const quoteTokenDecay =
+        ((await exchange.internalBalances()).baseTokenReserveQty -
+          (await baseToken.balanceOf(exchange.address))) *
+        iOmega;
+
+      expect(quoteTokenDecay).to.equal(baseTokenRebaseDownAmount * iOmega);
+
+      // we should be able to now add base tokens in order to offset the base tokens
+      // that have been "removed" during the rebase down.
+
+      // NOTE: for this test, we only want to remove part of the decay here. 
+      const baseTokenQtyToAdd = baseTokenRebaseDownAmount * .75;
+      await exchange.connect(liquidityProvider2).addLiquidity(
+        baseTokenQtyToAdd,
+        0, // no quote tokens
+        1,
+        0, // no quote tokens
+        liquidityProvider2.address,
+        expiration
+      );
+
+      // confirm lp2 has less base tokens
+      expect(await baseToken.balanceOf(liquidityProvider2.address)).to.equal(
+        liquidityProviderInitialBalances - baseTokenQtyToAdd
+      );
+
+      // quote token accounting should have not have changed
+      expect((await exchange.internalBalances()).quoteTokenReserveQty).to.equal(
+        quoteTokenLiquidityToAdd
+      );
+      expect(await quoteToken.balanceOf(exchange.address)).to.equal(
+        quoteTokenLiquidityToAdd
+      );
+
+      // confirm original LP can get correct amounts back.
+      const liquidityProviderbaseTokenExpectedBalance =
+        liquidityProviderInitialBalances - baseTokenLiquidityToAdd;
+      const liquidityProviderquoteTokenExpectedBalance =
+        liquidityProviderInitialBalances - quoteTokenLiquidityToAdd;
+
+      expect(await baseToken.balanceOf(liquidityProvider.address)).to.equal(
+        liquidityProviderbaseTokenExpectedBalance
+      );
+      expect(await quoteToken.balanceOf(liquidityProvider.address)).to.equal(
+        liquidityProviderquoteTokenExpectedBalance
+      );
+
+      await exchange
+        .connect(liquidityProvider)
+        .removeLiquidity(
+          await exchange.balanceOf(liquidityProvider.address),
+          1,
+          1,
+          cleanAddress1,
+          expiration
+        );
+
+      // confirm LP1 has expected balance
+      expect(await baseToken.balanceOf(cleanAddress1)).to.equal(
+        8769
+      );
+      expect(await quoteToken.balanceOf(cleanAddress1)).to.equal(
+        46154
+      );
+
+      // quick sanity check of this return. 
+      // After the rebase down the original LP "owns" 
+      // baseToken 8000;
+      // quoteToken 50000;
+      // baseToken are worth 5 quote tokens, so we can compute his "value" as
+      // 8000 + 50000 / 5 = 18,000
+      // He gets back
+      // 8769 + 46154 /5 = 9230 + 8769 = ~17,999.8
+
+      // confirm second LP can get an equivalent amount of both assets back (they only gave 1 asset)
+      const liquidityProvider2BaseTokenExpectedBalance =
+        liquidityProviderInitialBalances - baseTokenQtyToAdd;
+      const liquidityProvider2QuoteTokenExpectedBalance = 0;
+
+      expect(await baseToken.balanceOf(liquidityProvider2.address)).to.equal(
+        liquidityProvider2BaseTokenExpectedBalance
+      );
+      expect(await quoteToken.balanceOf(liquidityProvider2.address)).to.equal(
+        liquidityProvider2QuoteTokenExpectedBalance
+      );
+
+      // this should issue 1 base and 5 quote tokens
+      await exchange
+        .connect(liquidityProvider2)
+        .removeLiquidity(
+          await exchange.balanceOf(liquidityProvider2.address),
+          1,
+          1,
+          cleanAddress2,
+          expiration
+        );
+
+      expect(await baseToken.balanceOf(cleanAddress2)).to.equal(
+        731
+      );
+      expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(
+        3846
+      );
+    });
+
     it("Should allow for adding quote and base token liquidity after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
       // create expiration 50 minutes from now.
       const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
