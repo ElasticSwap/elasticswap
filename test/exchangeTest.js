@@ -1807,7 +1807,7 @@ describe("Exchange", () => {
       const liquidityProvider = accounts[1];
       const liquidityProvider2 = accounts[2];
       const cleanAddress1 = accounts[3].address;
-      const cleanAddress2 = accounts[3].address;
+      const cleanAddress2 = accounts[4].address;
 
       // send users (liquidity provider) base and quote tokens for easy accounting.
       const liquidityProviderInitialBalances = 1000000;
@@ -1895,16 +1895,16 @@ describe("Exchange", () => {
       expect(baseTokenDecayAfterSingleAssetEntry).to.equal(0);
 
       // confirm original LP can get correct amounts back.
-      const liquidityProviderbaseTokenExpectedBalance =
+      const liquidityProviderBaseTokenExpectedBalance =
         liquidityProviderInitialBalances - baseTokenQtyToAdd;
-      const liquidityProviderquoteTokenExpectedBalance =
+      const liquidityProviderQuoteTokenExpectedBalance =
         liquidityProviderInitialBalances - quoteTokenQtyToAdd;
 
       expect(await baseToken.balanceOf(liquidityProvider.address)).to.equal(
-        liquidityProviderbaseTokenExpectedBalance
+        liquidityProviderBaseTokenExpectedBalance
       );
       expect(await quoteToken.balanceOf(liquidityProvider.address)).to.equal(
-        liquidityProviderquoteTokenExpectedBalance
+        liquidityProviderQuoteTokenExpectedBalance
       );
 
       // this should distribute 30000 base tokens and 150000 quote tokens back to our liquidity provider
@@ -1934,7 +1934,6 @@ describe("Exchange", () => {
         liquidityProvider2quoteTokenExpectedBalance
       );
 
-      // this should issue 50000 base and 250000 quote tokens
       await exchange
         .connect(liquidityProvider2)
         .removeLiquidity(
@@ -1945,8 +1944,8 @@ describe("Exchange", () => {
           expiration
         );
 
-      expect(await baseToken.balanceOf(cleanAddress2)).to.equal(50000);
-      expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(250000);
+      expect(await baseToken.balanceOf(cleanAddress2)).to.equal(20000);
+      expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(99998);
 
       expect(await baseToken.balanceOf(exchange.address)).to.equal(0);
       expect(await quoteToken.balanceOf(exchange.address)).to.equal(0);
