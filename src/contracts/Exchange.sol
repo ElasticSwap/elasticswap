@@ -49,7 +49,7 @@ contract Exchange is ERC20, ReentrancyGuard {
      * @dev Called to check timestamps from users for expiration of their calls.
      * Used in place of a modifier for byte code savings
      */
-    modifier isNotExpired(uint256 _expirationTimeStamp)  {
+    modifier isNotExpired(uint256 _expirationTimeStamp) {
         require(_expirationTimeStamp >= block.timestamp, "Exchange: EXPIRED");
         _;
     }
@@ -94,7 +94,6 @@ contract Exchange is ERC20, ReentrancyGuard {
         address _liquidityTokenRecipient,
         uint256 _expirationTimestamp
     ) external nonReentrant() isNotExpired(_expirationTimestamp) {
-        
         uint256 totalSupply = this.totalSupply();
         MathLib.TokenQtys memory tokenQtys =
             MathLib.calculateAddLiquidityQuantities(
@@ -121,13 +120,16 @@ contract Exchange is ERC20, ReentrancyGuard {
         }
 
         bool isExchangeEmpty = totalSupply == 0;
-        if(isExchangeEmpty) {
-          // check if this the first LP provider, if so, we need to lock some minimum dust liquidity. 
-          require(tokenQtys.liquidityTokenQty > MINIMUM_LIQUIDITY, "Exchange: INITIAL_DEPOSIT_MIN");
-          unchecked {
-            tokenQtys.liquidityTokenQty -= MINIMUM_LIQUIDITY;  
-          }
-          _mint(address(this), MINIMUM_LIQUIDITY); // mint to this address, total supply will never be 0 again
+        if (isExchangeEmpty) {
+            // check if this the first LP provider, if so, we need to lock some minimum dust liquidity.
+            require(
+                tokenQtys.liquidityTokenQty > MINIMUM_LIQUIDITY,
+                "Exchange: INITIAL_DEPOSIT_MIN"
+            );
+            unchecked {
+                tokenQtys.liquidityTokenQty -= MINIMUM_LIQUIDITY;
+            }
+            _mint(address(this), MINIMUM_LIQUIDITY); // mint to this address, total supply will never be 0 again
         }
 
         _mint(_liquidityTokenRecipient, tokenQtys.liquidityTokenQty); // mint liquidity tokens to recipient
@@ -223,24 +225,34 @@ contract Exchange is ERC20, ReentrancyGuard {
 
         // this ensures that we are removing the equivalent amount of decay
         // when this person exits.
-        { //scoping to avoid stack too deep errors
-          uint256 internalBaseTokenReserveQty = internalBalances.baseTokenReserveQty;
-          uint256 baseTokenQtyToRemoveFromInternalAccounting = 
-            (_liquidityTokenQty * internalBaseTokenReserveQty) / totalSupplyOfLiquidityTokens;
+        {
+            //scoping to avoid stack too deep errors
+            uint256 internalBaseTokenReserveQty =
+                internalBalances.baseTokenReserveQty;
+            uint256 baseTokenQtyToRemoveFromInternalAccounting =
+                (_liquidityTokenQty * internalBaseTokenReserveQty) /
+                    totalSupplyOfLiquidityTokens;
 
-          internalBalances.baseTokenReserveQty = internalBaseTokenReserveQty = 
-            internalBaseTokenReserveQty - baseTokenQtyToRemoveFromInternalAccounting;
+            internalBalances.baseTokenReserveQty = internalBaseTokenReserveQty =
+                internalBaseTokenReserveQty -
+                baseTokenQtyToRemoveFromInternalAccounting;
 
-        // We should ensure no possible overflow here.
-          uint256 internalQuoteTokenReserveQty = internalBalances.quoteTokenReserveQty;
-          if (quoteTokenQtyToReturn > internalQuoteTokenReserveQty) {
-              internalBalances.quoteTokenReserveQty = internalQuoteTokenReserveQty = 0;
-          } else {
-              internalBalances.quoteTokenReserveQty = internalQuoteTokenReserveQty = 
-                internalQuoteTokenReserveQty - quoteTokenQtyToReturn;
-          }
+            // We should ensure no possible overflow here.
+            uint256 internalQuoteTokenReserveQty =
+                internalBalances.quoteTokenReserveQty;
+            if (quoteTokenQtyToReturn > internalQuoteTokenReserveQty) {
+                internalBalances
+                    .quoteTokenReserveQty = internalQuoteTokenReserveQty = 0;
+            } else {
+                internalBalances
+                    .quoteTokenReserveQty = internalQuoteTokenReserveQty =
+                    internalQuoteTokenReserveQty -
+                    quoteTokenQtyToReturn;
+            }
 
-          internalBalances.kLast = internalBaseTokenReserveQty * internalQuoteTokenReserveQty;
+            internalBalances.kLast =
+                internalBaseTokenReserveQty *
+                internalQuoteTokenReserveQty;
         }
 
         if (liquidityTokenFeeQty != 0) {
