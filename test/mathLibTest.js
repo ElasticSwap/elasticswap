@@ -239,10 +239,10 @@ describe("MathLib", () => {
       // internalTokenAReserveQty: the internal balance (X or Y) of token A as a result of this transaction
       const denominator = ratio + tokenAInternalReserveQtyAfterTransaction;
 
-      const altGamma = tokenAQtyToAdd / denominator;
+      const gamma = tokenAQtyToAdd / denominator;
 
       const expectLiquidityTokens = Math.ceil(
-        (totalSupplyOfLiquidityTokens * altGamma) / (1 - altGamma)
+        (totalSupplyOfLiquidityTokens * gamma) / (1 - gamma)
       );
 
       const calculatedLiquidityTokenQtyForSingleAssetEntry =
@@ -266,13 +266,13 @@ describe("MathLib", () => {
       // internalTokenAReserveQty: the internal balance (X or Y) of token A as a result of this transaction
       const denominator2 = ratio + tokenAInternalReserveQtyAfterTransaction2;
 
-      const altGamma2BN = BigNumber(tokenAQtyToAdd2)
+      const gamma2BN = BigNumber(tokenAQtyToAdd2)
         .dividedBy(BigNumber(denominator2))
         .dp(18);
 
       const expectLiquidityTokens2BN = BigNumber(totalSupplyOfLiquidityTokens)
-        .multipliedBy(altGamma2BN)
-        .dividedBy(BigNumber(1).minus(altGamma2BN))
+        .multipliedBy(gamma2BN)
+        .dividedBy(BigNumber(1).minus(gamma2BN))
         .dp(0, ROUND_DOWN);
 
       const calculatedLiquidityTokenQtyForSingleAssetEntry2 =
