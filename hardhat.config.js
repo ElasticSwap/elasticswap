@@ -30,7 +30,7 @@ module.exports = {
     // goerli: {
     //   deploy: ["deploy/core", "deploy/testnet"],
     //   url: `https://eth-goerli.alchemyapi.io/v2/${GOERLI_ALCHEMY_API_KEY}`,
-    //   accounts: [`0x${GOERLI_PRIVATE_KEY}`]
+    //   accounts: [`0x${GOERLI_PRIVATE_KEY}`],
     // },
   },
   paths: {
