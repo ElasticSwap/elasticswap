@@ -168,7 +168,6 @@ library MathLib {
         uint256 _internalTokenAReserveQty,
         uint256 _omega
     ) public pure returns (uint256 liquidityTokenQty) {
-        
         /**
         
         (is the formula in the terms of quoteToken)
@@ -205,7 +204,6 @@ library MathLib {
         uint256 _tokenQtyAToAdd,
         uint256 _internalTokenAReserveQty
     ) public pure returns (uint256 liquidityTokenQty) {
-        
         /**
         
                ΔX
@@ -387,14 +385,13 @@ library MathLib {
         // quoteTokenReserveQty += quoteTokenQtyDecayChange;
         // baseTokenReserveQty += baseTokenQty;
 
-        // calculate the number of liquidity tokens to return to user using:        
-        liquidityTokenQty =
-            calculateLiquidityTokenQtyForSingleAssetEntryWithQuoteTokenDecay(
-                _baseTokenReserveQty,
-                _totalSupplyOfLiquidityTokens,
-                baseTokenQty,
-                _internalBalances.baseTokenReserveQty
-            );
+        // calculate the number of liquidity tokens to return to user using:
+        liquidityTokenQty = calculateLiquidityTokenQtyForSingleAssetEntryWithQuoteTokenDecay(
+            _baseTokenReserveQty,
+            _totalSupplyOfLiquidityTokens,
+            baseTokenQty,
+            _internalBalances.baseTokenReserveQty
+        );
     }
 
     /**

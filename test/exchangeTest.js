@@ -1969,7 +1969,7 @@ describe("Exchange", () => {
         liquidityProvider.address,
         liquidityProviderInitialBalances
       );
-      
+
       // lp2 only needs quote tokens for single asset entry.
       await quoteToken.transfer(
         liquidityProvider2.address,
@@ -2030,9 +2030,9 @@ describe("Exchange", () => {
       const quoteTokensToAdd = Math.floor(
         baseTokenDecay / (baseTokenQtyToAdd / quoteTokenQtyToAdd) / 2
       );
-      
+
       // NOTE: for this test, we don't want to remove all of the decay, as we are testing
-      // this intermediate state. 
+      // this intermediate state.
       await exchange.connect(liquidityProvider2).addLiquidity(
         0, // no base tokens
         quoteTokensToAdd,
@@ -2046,7 +2046,7 @@ describe("Exchange", () => {
       const baseTokenDecayAfterSingleAssetEntry =
         (await baseToken.balanceOf(exchange.address)) -
         (await exchange.internalBalances()).baseTokenReserveQty;
-      expect(baseTokenDecayAfterSingleAssetEntry).to.equal(baseTokenDecay / 2)
+      expect(baseTokenDecayAfterSingleAssetEntry).to.equal(baseTokenDecay / 2);
 
       // confirm original LP can get correct amounts back.
       const liquidityProviderBaseTokenExpectedBalance =
@@ -2075,7 +2075,7 @@ describe("Exchange", () => {
       expect(await baseToken.balanceOf(cleanAddress1)).to.equal(37500);
       expect(await quoteToken.balanceOf(cleanAddress1)).to.equal(112501);
 
-      // To confirm this is correct, we can convert these token's to their "value" vs what the 
+      // To confirm this is correct, we can convert these token's to their "value" vs what the
       // LP put in.  After the rebase, the first LP put in essentially 50,000 base and 50,000 quote.
       // the AMM has the base tokens worth about 5 quote tokens.  So currently this user has a total
       // value of 50,000 base tokens + 50,000 quote / 5 = 60,000 base tokens of value.
@@ -2107,9 +2107,9 @@ describe("Exchange", () => {
       expect(await baseToken.balanceOf(cleanAddress2)).to.equal(12500);
       expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(37499);
 
-      // To confirm this is correct, we can use the same math.  
+      // To confirm this is correct, we can use the same math.
       // they put in 100,000 quote tokens, which is roughly 20,000 base tokens of value.
-      // they are returned 12500 + 37499 / 5 = 20,000 base tokens 
+      // they are returned 12500 + 37499 / 5 = 20,000 base tokens
 
       expect(await baseToken.balanceOf(exchange.address)).to.equal(0);
       expect(await quoteToken.balanceOf(exchange.address)).to.equal(0);
@@ -2568,8 +2568,8 @@ describe("Exchange", () => {
       // we should be able to now add base tokens in order to offset the base tokens
       // that have been "removed" during the rebase down.
 
-      // NOTE: for this test, we only want to remove part of the decay here. 
-      const baseTokenQtyToAdd = baseTokenRebaseDownAmount * .75;
+      // NOTE: for this test, we only want to remove part of the decay here.
+      const baseTokenQtyToAdd = baseTokenRebaseDownAmount * 0.75;
       await exchange.connect(liquidityProvider2).addLiquidity(
         baseTokenQtyToAdd,
         0, // no quote tokens
@@ -2616,15 +2616,11 @@ describe("Exchange", () => {
         );
 
       // confirm LP1 has expected balance
-      expect(await baseToken.balanceOf(cleanAddress1)).to.equal(
-        8769
-      );
-      expect(await quoteToken.balanceOf(cleanAddress1)).to.equal(
-        46154
-      );
+      expect(await baseToken.balanceOf(cleanAddress1)).to.equal(8769);
+      expect(await quoteToken.balanceOf(cleanAddress1)).to.equal(46154);
 
-      // quick sanity check of this return. 
-      // After the rebase down the original LP "owns" 
+      // quick sanity check of this return.
+      // After the rebase down the original LP "owns"
       // baseToken 8000;
       // quoteToken 50000;
       // baseToken are worth 5 quote tokens, so we can compute his "value" as
@@ -2655,12 +2651,8 @@ describe("Exchange", () => {
           expiration
         );
 
-      expect(await baseToken.balanceOf(cleanAddress2)).to.equal(
-        731
-      );
-      expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(
-        3846
-      );
+      expect(await baseToken.balanceOf(cleanAddress2)).to.equal(731);
+      expect(await quoteToken.balanceOf(cleanAddress2)).to.equal(3846);
     });
 
     it("Should allow for adding quote and base token liquidity after a rebase down has occurred, and correct withdraw of re-based qty", async () => {
