@@ -2488,7 +2488,7 @@ describe("Exchange", () => {
       );
     });
 
-    only("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty with decay still present", async () => {
+    it("Should allow for adding base token liquidity (only) after a rebase down has occurred, and correct withdraw of re-based qty with decay still present", async () => {
       // create expiration 50 minutes from now.
       const expiration = Math.round(new Date().getTime() / 1000 + 60 * 50);
       const liquidityProvider = accounts[1];
