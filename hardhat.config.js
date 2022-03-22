@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
 require("hardhat-contract-sizer");
 require("hardhat-gas-reporter");
 require("hardhat-deploy");
@@ -53,6 +54,11 @@ module.exports = {
           ? [process.env.AVAX_PRIVATE_KEY]
           : [],
     },
+  },
+  etherscan: {
+    // Your API key for Snowtrace
+    // Obtain one at https://snowtrace.io/
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
   paths: {
     deploy: ["deploy/core"],
