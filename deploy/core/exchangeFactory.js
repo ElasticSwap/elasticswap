@@ -1,4 +1,5 @@
 const { ethers } = require("hardhat");
+const hre = require("hardhat");
 
 const HARDHAT_NETWORK_ID = "31337";
 
@@ -23,7 +24,10 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log(
       `contract ExchangeFactory deployed at ${deployResult.address} using ${deployResult.receipt.gasUsed} gas`
     );
-    
+    await hre.run('verify:verify', {
+      address: deployResult.address,
+      constructorArguments: [ feeRecipient ],
+    })
     const networkId = await getChainId();
     const accounts = await ethers.getSigners();
     if (networkId !== HARDHAT_NETWORK_ID) {

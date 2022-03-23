@@ -1,3 +1,5 @@
+const hre = require("hardhat");
+
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const namedAccounts = await getNamedAccounts();
@@ -12,6 +14,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log(
       `contract MathLib deployed at ${deployResult.address} using ${deployResult.receipt.gasUsed} gas`
     );
+    await hre.run('verify:verify', {
+      address: deployResult.address,
+      constructorArguments: [],
+    })
   }
 };
 module.exports.tags = ["MathLib"];
