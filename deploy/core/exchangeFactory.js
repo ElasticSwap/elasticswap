@@ -1,5 +1,5 @@
-const { ethers } = require("hardhat");
 const hre = require("hardhat");
+const { ethers } = hre;
 
 const HARDHAT_NETWORK_ID = "31337";
 
