@@ -695,7 +695,7 @@ library MathLib {
 
     /**
      * @dev calculates the qty of liquidity tokens that should be sent to the DAO due to the growth in K from trading.
-     * The DAO takes 1/6 of the total fees (30BP total fee, 25 BP to lps and 5 BP to the DAO)
+     * 50BPS is the total fee, 25 goes to the LPs, 5 BP to the DAO, and 20 BP to staking rewards and liquidity incentives
      * @param _totalSupplyOfLiquidityTokens the total supply of our exchange's liquidity tokens (aka Ro)
      * @param _internalBalances internal balances struct from our exchange's internal accounting
      *
@@ -714,7 +714,7 @@ library MathLib {
         if (rootK > rootKLast) {
             uint256 numerator =
                 _totalSupplyOfLiquidityTokens * (rootK - rootKLast);
-            uint256 denominator = (rootK * 5) + rootKLast;
+            uint256 denominator = rootK * 2;
             liquidityTokenFeeQty = numerator / denominator;
         }
     }

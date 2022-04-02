@@ -22,7 +22,7 @@ contract Exchange is ERC20, ReentrancyGuard {
     address public immutable quoteToken; // address of ERC20 quote token (WETH or a stable coin w/ fixed supply)
     address public immutable exchangeFactoryAddress;
 
-    uint256 public constant TOTAL_LIQUIDITY_FEE = 30; // fee provided to liquidity providers + DAO in basis points
+    uint256 public constant TOTAL_LIQUIDITY_FEE = 50; // fee provided to liquidity providers + DAO in basis points
     uint256 public constant MINIMUM_LIQUIDITY = 1e3;
 
     MathLib.InternalBalances public internalBalances;
