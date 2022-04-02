@@ -3513,7 +3513,7 @@ describe("Exchange", () => {
       // the fees will be turned into LP tokens which means we need to convert them into
       // a single value of one token to compare the qty of fees expected
       const expectedTotalFees = quoteTokenQtyToSwap * liquidityFee;
-      const poolsExpectedDaoFeesInQuoteTokens = expectedTotalFees / 2;
+      const expectTotalFeesToDAO = expectedTotalFees / 2;
       const exchangePriceRatio = (await baseToken.balanceOf(exchange.address))
         .mul(WAD)
         .div(await quoteToken.balanceOf(exchange.address));
@@ -3546,7 +3546,7 @@ describe("Exchange", () => {
         baseTokenFees.mul(WAD).div(exchangePriceRatio)
       );
       expect(daoFeesInQuoteTokens.toNumber()).to.be.approximately(
-        poolsExpectedDaoFeesInQuoteTokens,
+        expectTotalFeesToDAO,
         10
       );
     });
@@ -4737,7 +4737,7 @@ describe("Exchange", () => {
       // the fees will be turned into LP tokens which means we need to convert them into
       // a single value of one token to compare the qty of fees expected
       const expectedTotalFees = quoteTokenQtyToSwap * liquidityFee;
-      const poolsExpectedDaoFeesInQuoteTokens = expectedTotalFees / 2;
+      const expectTotalFeesToDAO = expectedTotalFees / 2;
       const exchangePriceRatio = (await baseToken.balanceOf(exchange.address))
         .mul(WAD)
         .div(await quoteToken.balanceOf(exchange.address));
@@ -4769,7 +4769,7 @@ describe("Exchange", () => {
         baseTokenFees.mul(WAD).div(exchangePriceRatio)
       );
       expect(daoFeesInQuoteTokens.toNumber()).to.be.approximately(
-        poolsExpectedDaoFeesInQuoteTokens,
+        expectTotalFeesToDAO,
         10
       );
     });
@@ -4830,7 +4830,7 @@ describe("Exchange", () => {
       // the fees will be turned into LP tokens which means we need to convert them into
       // a single value of one token to compare the qty of fees expected
       const expectedTotalFees = quoteTokenQtyToSwap * liquidityFee;
-      const poolsExpectedDaoFeesInQuoteTokens = expectedTotalFees / 2;
+      const expectTotalFeesToDAO = expectedTotalFees / 2;
 
       // simulate a rebase up by sending our exchange double the current amount base tokens.
       // this means that the fee address should also be able to later redeem double the amount of
@@ -4872,7 +4872,7 @@ describe("Exchange", () => {
         baseTokenFees.mul(WAD).div(exchangeTokenRatio)
       );
       expect(daoFeesInQuoteTokens.toNumber()).to.be.approximately(
-        poolsExpectedDaoFeesInQuoteTokens,
+        expectTotalFeesToDAO,
         10
       );
     });
@@ -4933,7 +4933,7 @@ describe("Exchange", () => {
       // the fees will be turned into LP tokens which means we need to convert them into
       // a single value of one token to compare the qty of fees expected
       const expectedTotalFees = quoteTokenQtyToSwap * liquidityFee;
-      const poolsExpectedDaoFeesInQuoteTokens = expectedTotalFees / 2;
+      const expectTotalFeesToDAO = expectedTotalFees / 2;
 
       // simulate a rebase down by sending tokens away from exchange 1/2 the current amount base tokens.
       // this means that the fee address should also get 1/2 the base tokens.
@@ -4974,7 +4974,7 @@ describe("Exchange", () => {
         baseTokenFees.mul(WAD).div(exchangeTokenRatio)
       );
       expect(daoFeesInQuoteTokens.toNumber()).to.be.approximately(
-        poolsExpectedDaoFeesInQuoteTokens,
+        expectTotalFeesToDAO,
         10
       );
     });
